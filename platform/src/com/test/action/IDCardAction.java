@@ -1,0 +1,39 @@
+package com.test.action;
+
+import spark.Request;
+import spark.Response;
+import spark.Route;
+import spark.Spark;
+import spark.servlet.ISparkApplication;
+
+import com.util.ReadProperties;
+import com.util.Uploader;
+/**
+ *身份证照片的action
+ * @author chengyz
+ *
+ */
+public class IDCardAction implements ISparkApplication {
+
+	@Override
+	public void run() {
+		Spark.post(new Route("/hkdapp/certificate/uploadCard",true,"jdbcwrite") {		
+			/**
+			 * 手持身份证照片的上传
+			 */
+			@Override
+			public Object handle(Request request, Response response) throws Exception {
+				String basePath = ReadProperties.getValue("imgIDCardPath");//得到config配置文件的主路径
+				Uploader up = new Uploader(request.raw());
+				up.setSavePath(basePath);
+				String[] fileType = {".gif" , ".png" , ".jpg" , ".jpeg" , ".bmp"};
+				up.setAllowFiles(fileType);
+				up.setMaxSize(10000); //单位KB
+				up.upload();
+				String url = up.getUrl();//文件访问路径
+				return url;
+			}
+		});
+		
+	}
+}

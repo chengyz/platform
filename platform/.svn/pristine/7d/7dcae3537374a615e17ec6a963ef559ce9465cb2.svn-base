@@ -1,0 +1,112 @@
+package com.sctgz.HkdApp.action;
+
+import com.sctgz.HkdApp.manage.CommodityMng;
+
+import spark.Request;
+import spark.Response;
+import spark.Route;
+import spark.Spark;
+import spark.annotation.Auto;
+import spark.servlet.ISparkApplication;
+
+/**
+ * 商品信息action
+ * 
+ * @author hshzh
+ * @date 2017-2-28 下午5:10:39
+ */
+public class CommodityAction implements ISparkApplication {
+
+	@Auto(name = CommodityMng.class)
+	private CommodityMng cmdtMng;
+
+	@Override
+	public void run() {
+		/**
+		 * 保存或修改商品信息
+		 */
+		Spark.post(new Route("/hkdapp/commodity/saveOrUpCommodity", true, "jdbcwrite") {
+			@Override
+			public Object handle(Request request, Response response) throws Exception {
+				return cmdtMng.saveOrUpCommodity("jdbcwrite", false, request.raw(), response.raw());
+			}
+		});
+		/**
+		 * 删除商品信息
+		 */
+		Spark.post(new Route("/hkdapp/commodity/delCommodity", true, "jdbcwrite") {
+
+			@Override
+			public Object handle(Request request, Response response) throws Exception {
+				return cmdtMng.delCommodity("jdbcwrite", false, request.raw(), response.raw());
+			}
+		});
+		/**
+		 * 查询商品信息
+		 */
+		Spark.post(new Route("/hkdapp/commodity/findCommodityInfo", false, "jdbcread") {
+
+			@Override
+			public Object handle(Request request, Response response) throws Exception {
+				return cmdtMng.findCommodityInfo("jdbcread", true, request.raw(), response.raw());
+			}
+
+		});
+		/**
+		 * 查商品信息列表
+		 */
+		Spark.post(new Route("/hkdapp/commodity/findCommodityList", false, "jdbcread") {
+			@Override
+			public Object handle(Request request, Response response) throws Exception {
+				return cmdtMng.findCommodityList("jdbcread", true, request.raw(), response.raw());
+			}
+		});
+		
+		/**
+		 * 修改商品信息状态、单价、数量
+		 */
+		Spark.post(new Route("/hkdapp/commodity/upPriceOrStateOrCount", true, "jdbcwrite") {
+			@Override
+			public Object handle(Request request, Response response) throws Exception {
+				return cmdtMng.upPriceOrStateOrCount("jdbcwrite", false, request.raw(), response.raw());
+			}
+		});
+		/**
+		 * 上传商品的图片
+		 */
+		Spark.post(new Route("/hkdapp/commodity/uploadImages",true,"jdbcwrite") {		
+			@Override
+			public Object handle(Request request, Response response) throws Exception {
+				return cmdtMng.uploadImage(request.raw(), response.raw());
+			}
+		});
+		/**
+		 * 获取热卖商品
+		 */
+		Spark.post(new Route("/hkdapp/commodity/findCommodityHotList", true, "jdbcread") {
+			@Override
+			public Object handle(Request request, Response response) throws Exception {
+				return cmdtMng.findCommodityHotList("jdbcread", false, request.raw(), response.raw());
+			}
+		});
+		/**
+		 * 后台保存或修改商品信息
+		 */
+		Spark.post(new Route("/hkdapp/commodity/saveOrUpdate", true, "jdbcwrite") {
+			@Override
+			public Object handle(Request request, Response response) throws Exception {
+				return cmdtMng.saveOrUpdate("jdbcwrite", false, request.raw(), response.raw());
+			}
+		});
+		/**
+		 * 查商家商品信息列表
+		 */
+		Spark.post(new Route("/hkdapp/commodity/findCommoditysList", false, "jdbcread") {
+			@Override
+			public Object handle(Request request, Response response) throws Exception {
+				return cmdtMng.findCommoditysList("jdbcread", true, request.raw(), response.raw());
+			}
+		});
+	}
+
+}

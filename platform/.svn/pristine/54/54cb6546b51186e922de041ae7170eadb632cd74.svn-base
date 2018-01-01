@@ -1,0 +1,353 @@
+package com.sctgz.HkdApp.manage;
+
+import java.math.BigDecimal;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import spark.annotation.Auto;
+
+import com.sctgz.HkdApp.entity.OrderInfo;
+import com.sctgz.HkdApp.entity.VipEarnRecord;
+import com.sctgz.HkdApp.service.OrderInfoService;
+import com.sctgz.HkdApp.service.OrderPeopleService;
+import com.sctgz.HkdApp.service.VipBalanceService;
+import com.sctgz.HkdApp.service.VipEarnRecordService;
+import com.sctgz.HkdApp.service.impl.OrderInfoServiceImpl;
+import com.sctgz.HkdApp.service.impl.OrderPeopleServiceImpl;
+import com.sctgz.HkdApp.service.impl.VipBalanceServiceImpl;
+import com.sctgz.HkdApp.service.impl.VipEarnRecordServiceImpl;
+import com.sctgz.platform.entity.VipInfo;
+import com.sctgz.platform.service.IVipService;
+import com.sctgz.platform.service.impl.VipServiceImpl;
+import com.sctgz.util.CacheUtil;
+import com.sctgz.util.DateTimeUtil;
+import com.sctgz.util.DateUtil;
+import com.sctgz.util.JsonUtil;
+import com.sctgz.util.RSAUtil;
+import com.sctgz.util.ReqToEntityUtil;
+import com.sctgz.util.ReqToMapUtil;
+
+import dbengine.util.Page;
+
+/**
+ * 订单的manage
+ * @author chengyz
+ *
+ */
+public class OrderInfoMng {
+	
+	@Auto(name=OrderInfoServiceImpl.class)
+	private OrderInfoService orderInfoService;
+	
+	@Auto(name=VipServiceImpl.class)
+	private IVipService vipService;
+	
+	@Auto(name=LocationMng.class)
+	private LocationMng locationMng;
+	
+	@Auto(name=VipBalanceServiceImpl.class)
+	private VipBalanceService vipBalanceService;
+	
+	@Auto(name=OrderPeopleServiceImpl.class)
+	private OrderPeopleService orderPeopleService;
+	
+	@Auto(name=VipEarnRecordServiceImpl.class)
+	private VipEarnRecordService vipEarnRecordService;
+	/**
+	 * 查询单个订单
+	 * @param sourceId
+	 * @param closeConn
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	public String findOrder(String sourceId,boolean closeConn,HttpServletRequest request,HttpServletResponse response){
+		Map<String,String> findMap = ReqToMapUtil.reqToMap(request, OrderInfo.class);
+		String orderUUID = findMap.get("orderUUID");
+		Map<String,Object> map = new HashMap<String,Object>();
+		if(orderUUID != null && !"".equals(orderUUID) && !"null".equals(orderUUID)){
+			OrderInfo order = orderInfoService.findOrder(sourceId, closeConn, orderUUID);
+			VipInfo vvip = vipService.findVipInfoByUUID(sourceId, closeConn, findMap.get("vipUUID"));
+			VipInfo getvip = vipService.findVipInfoByOrderUUID(sourceId, closeConn, order.getOrderUUID());
+			map.put("order", order);
+			if(getvip == null){
+				map.put("getvip", "");
+			}else{
+				map.put("getvip", getvip);
+			}
+			if(vvip == null){
+				map.put("vvip", "");
+			}else{
+				map.put("vvip", vvip);
+			}
+			return JsonUtil.ObjToJson(map);
+		}else{
+			return "";
+		}
+	}
+	
+	/**
+	 * 删除订单
+	 * @param sourceId
+	 * @param closeConn
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	public String deleteOrder(String sourceId,boolean closeConn,HttpServletRequest request,HttpServletResponse response){
+		String orderUUID = request.getParameter("uuids");
+		Map<String, String> map =  new HashMap<String, String>();
+		if(orderUUID != null && !"".equals(orderUUID)){
+			if(orderInfoService.deleteOrder(sourceId, closeConn, orderUUID)){
+				map.put("status", "1");
+				map.put("msg", "成功");
+				return JsonUtil.ObjToJson(map);
+			}else{
+				map.put("status", "-2");
+				map.put("msg", "失败");
+				return JsonUtil.ObjToJson(map);
+			}
+		}else{
+			map.put("status", "-1");
+			map.put("msg", "未获取到任何信息");
+			return JsonUtil.ObjToJson(map);
+		}
+	}
+	/**
+	 * 保存或修改订单
+	 * @param sourceId
+	 * @param closeConn
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	public String saveOrUpOrder(String sourceId,boolean closeConn,HttpServletRequest request,HttpServletResponse response){
+		OrderInfo order = (OrderInfo)ReqToEntityUtil.reqToEntity(request, OrderInfo.class);
+		String price = request.getParameter("price");
+		price = RSAUtil.decryptData(closeConn, price, false);
+		BigDecimal prices = new BigDecimal(price);
+		Map<String,Object> map = new HashMap<String,Object>();
+		if(prices.compareTo(order.getOrderPrice()) != 0) {
+			map.put("status", "-4");
+			map.put("msg", "订单金额已被篡改");
+			return JsonUtil.ObjToJson(map);
+		}
+		if(order.getVipUUID() == null || "".equals(order.getVipUUID())){
+			map.put("status", "-3");
+			map.put("msg", "未登录不能创建订单");
+			return JsonUtil.ObjToJson(map);
+		}
+		if(order == null){
+			map.put("status", "-1");
+			map.put("msg", "未获取到信息");
+			return JsonUtil.ObjToJson(map);
+		}
+		String token = UUID.randomUUID().toString();
+		if(order.getId() == null){
+			Long time = DateTimeUtil.getLeonardSeconds();
+			String orderNumber = time.toString()+(int)(Math.random()*1000);
+			order.setOrderNumber(orderNumber);//取当前时间来生成订单编号
+			order.setOrderUUID(token);
+			Date date = new Date();
+			order.setCreateTime(DateTimeUtil.formatDate(date, "yyyy-MM-dd HH:mm:ss"));
+			//支付截止时间为订单提交后的十分钟
+			order.setCutOffTime(DateTimeUtil.formatDateTime(DateTimeUtil.dateOperation(date, 0, 0, 10, 0), "yyyy-MM-dd HH:mm:ss"));
+		}
+		//设置验证码到缓存中，通过订单uuid来获取验证码
+		Map cacheMap = new HashMap();
+		int orderPasscode = (int)(Math.random()*1000000);
+		cacheMap.put("orderPasscode", String.valueOf(orderPasscode));
+		CacheUtil.getInstance().setTokenObject(token, cacheMap);
+		
+		if(orderInfoService.saveOrUpOrder(sourceId, closeConn, order)){
+			map.put("status", "1");
+			map.put("msg","成功");
+			map.put("order", order);
+			return JsonUtil.ObjToJson(map);
+		}else{
+			map.put("status","-2");
+			map.put("msg", "失败");
+			
+			return JsonUtil.ObjToJson(map);
+		}
+	}
+	public static void main(String[] args){
+		int passcode = (int)(Math.random()*100000);
+		System.out.println(passcode);
+	}
+	/**
+	 * 查询订单列表
+	 * @param sourceId
+	 * @param closeConn
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	public String findOrderList(String sourceId,boolean closeConn,HttpServletRequest request,HttpServletResponse response){
+		Map<String,String> findMap = ReqToMapUtil.reqToMap(request, OrderInfo.class);
+		String startTime = request.getParameter("startTime");
+		String endTime = request.getParameter("endTime");
+		if(startTime != null && !"".equals(startTime)){
+			startTime = startTime.replace("  ", " ");
+		}
+		if(endTime != null && !"".equals(endTime)){
+			endTime = endTime.replace("  ", " ");
+		}
+		findMap.put("startTime", startTime);
+		findMap.put("endTime", endTime);
+		Page page = (Page)ReqToEntityUtil.reqToEntity(request, Page.class);
+		List<OrderInfo> orderlist = orderInfoService.findOrderList(sourceId, closeConn, page, findMap);
+		if(orderlist == null || orderlist.size() < 1){
+			return "[]";
+		}
+		if(page == null){
+			return JsonUtil.ObjToJson(orderlist);
+		}else{
+			return JsonUtil.ObjToJson(page);
+		}
+	}
+	/**
+	 * 修改订单状态
+	 * @param sourceId
+	 * @param closeConn
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	public String updateOrderStatus(String sourceId, boolean closeConn, HttpServletRequest request, HttpServletResponse response) {
+		OrderInfo order = (OrderInfo)ReqToEntityUtil.reqToEntity(request, OrderInfo.class);
+		String status = request.getParameter("status");
+		Map<String,String> map = new HashMap<String,String>();
+		if(status == null || "".equals(status) || order == null){
+			map.put("status", "-1");
+			map.put("msg", "未获取到任何信息");
+			return JsonUtil.ObjToJson(map);
+		}
+		if("2".equals(status)){
+			if("4".equals(order.getStatus())){
+				map.put("status", "-3");
+				map.put("msg", "订单已在配送中，不能取消");
+				return JsonUtil.ObjToJson(map);
+			}
+			if("5".equals(order.getStatus())){
+				map.put("status", "-4");
+				map.put("msg", "跑客已经确认送达，不能取消");
+				return JsonUtil.ObjToJson(map);
+			}
+			if("3".equals(order.getStatus())){
+				OrderInfo orders = orderInfoService.findOrder(sourceId, closeConn, order.getOrderUUID());
+				if("3".equals(orders.getStatus())){
+					orders.setStatus("2");
+				}
+				//待抢单的订单，会员取消订单改为失效
+				orderInfoService.saveOrUpOrder(sourceId, closeConn, orders);
+				
+				//将会员支付的跑腿费返回到跑客的余额中
+				vipBalanceService.updateVipBalance("jdbcwrite", true, order.getVipUUID(), orders.getOrderPrice());
+				map.put("status", "2");
+				map.put("msg", "订单取消成功");
+				return JsonUtil.ObjToJson(map);
+			}
+		}
+		if(order.getOrderUUID() != null && !"".equals(order.getOrderUUID())){
+			if(orderInfoService.updateOrderStatus(sourceId, closeConn, status,order.getOrderUUID())){
+				map.put("status", "1");
+				map.put("msg", "成功");
+				if("6".equals(status)){
+					VipInfo vip = vipService.findVipInfoByOrderUUID(sourceId, closeConn, order.getOrderUUID());
+					vipBalanceService.updateVipBalance(sourceId, closeConn, vip.getVipUUID(), order.getOrderPrice());//更新跑客的余额
+					//添加会员的收入记录
+					VipEarnRecord record = new VipEarnRecord();
+					if(order.getBuyOption() != null && !"".equals(order.getBuyOption())){
+						record.setEarnDetails(order.getBuyOption());
+					}else if(order.getRemark() != null && !"".equals(order.getRemark())){
+						record.setEarnDetails(order.getRemark());
+					}
+					record.setEarnMoney(order.getOrderPrice());
+					record.setEarnTime(DateUtil.formatDate(new Date(),"yyyy-MM-dd HH:mm:ss"));
+					record.setOrderUUID(order.getOrderUUID());
+					record.setRecordUUID(UUID.randomUUID().toString());
+					record.setVipName(vip.getVipName());
+					record.setVipMobilePhone(vip.getVipMobile());
+					record.setVipUUID(vip.getVipUUID());
+					vipEarnRecordService.saveOrUpdate(sourceId, closeConn, record);
+					vip.setVipStatus("1");//还原跑客的状态为可以接单
+					vipService.saveOrUpVip(sourceId, closeConn, vip);
+				}
+				if("4".equals(status) || "5".equals(status) || "6".equals(status)){
+					//订单状态为完成，清空待处理订单缓存
+					locationMng.delUntreatedOrderCache(order.getOrderUUID(), closeConn, order.getOrderUUID());
+				}else if("3".equals(status)){//加入缓存
+					locationMng.addUntreatedOrderCache(order.getOrderUUID(), closeConn, order);
+				}
+				return JsonUtil.ObjToJson(map);
+			}else{
+				map.put("status", "-2");
+				map.put("msg", "失败");
+				return JsonUtil.ObjToJson(map);
+			}
+		}else{
+			map.put("status", "-1");
+			map.put("msg", "未获取到任何信息");
+			return JsonUtil.ObjToJson(map);
+		}
+	}
+	/**
+	 * 查询接单订单列表
+	 * @param sourceId
+	 * @param closeConn
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	public String findGetOrderList(String sourceId, boolean closeConn, HttpServletRequest request, HttpServletResponse response) {
+		Map<String,String> findMap = ReqToMapUtil.reqToMap(request, OrderInfo.class);
+		String startTime = request.getParameter("startTime");
+		String endTime = request.getParameter("endTime");
+		String vipUUID = request.getParameter("vipUUID");//抢单者会员UUID
+		if(startTime != null && !"".equals(startTime)){
+			startTime = startTime.replace("  ", " ");
+		}
+		if(endTime != null && !"".equals(endTime)){
+			endTime = endTime.replace("  ", " ");
+		}
+		findMap.put("startTime", startTime);
+		findMap.put("endTime", endTime);
+		findMap.put("vipUUID", vipUUID);
+		Page page = (Page)ReqToEntityUtil.reqToEntity(request, Page.class);
+		List<OrderInfo> orderlist = orderInfoService.findGetOrderList(sourceId, closeConn, page, findMap);
+		if(orderlist == null || orderlist.size() < 1){
+			return "[]";
+		}
+		if(page == null){
+			return JsonUtil.ObjToJson(orderlist);
+		}else{
+			return JsonUtil.ObjToJson(page);
+		}
+	}
+	/**
+	 * 查询收货确认码
+	 * @param sourceId
+	 * @param closeConn
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	public String findOrderPasscode(String sourceId,boolean closeConn,HttpServletRequest request,HttpServletResponse response){
+		String orderUUID = request.getParameter("orderUUID");
+		String vipUUID = request.getParameter("vipUUID");
+		Map<String,Object> map = new HashMap<String,Object>();
+		if(orderUUID == null || "".equals(orderUUID) || "null".equals(orderUUID) || vipUUID == null || "".equals(vipUUID) || "null".equals(vipUUID)){
+			map.put("status", "-1");
+			map.put("msg", "未获取到信息");
+			return JsonUtil.ObjToJson(map);
+		}
+		return orderInfoService.findOrderPasscode(sourceId, closeConn, vipUUID, orderUUID);
+	}
+}

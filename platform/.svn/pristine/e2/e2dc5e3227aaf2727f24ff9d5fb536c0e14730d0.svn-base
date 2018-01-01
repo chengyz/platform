@@ -1,0 +1,285 @@
+package com.sctgz.HkdApp.manage;
+
+import java.math.BigDecimal;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import spark.annotation.Auto;
+
+import com.alipay.api.AlipayApiException;
+import com.alipay.api.AlipayClient;
+import com.alipay.api.DefaultAlipayClient;
+import com.alipay.api.request.AlipayFundTransToaccountTransferRequest;
+import com.alipay.api.response.AlipayFundTransToaccountTransferResponse;
+import com.alipay.config.AlipayConfig;
+import com.alipay.util.UtilDate;
+import com.sctgz.HkdApp.entity.VipBalance;
+import com.sctgz.HkdApp.entity.WithdrawCash;
+import com.sctgz.HkdApp.service.VipBalanceService;
+import com.sctgz.HkdApp.service.WithdrawCashService;
+import com.sctgz.HkdApp.service.impl.VipBalanceServiceImpl;
+import com.sctgz.HkdApp.service.impl.WithdrawCashServiceImpl;
+import com.sctgz.platform.entity.VipInfo;
+import com.sctgz.util.DateUtil;
+import com.sctgz.util.JsonUtil;
+import com.sctgz.util.RSAUtil;
+import com.sctgz.util.ReqToEntityUtil;
+import com.sctgz.util.ReqToMapUtil;
+
+import dbengine.util.Page;
+
+/**
+ * 会员提现管理
+ * 
+ * @author chengyz
+ * 
+ */
+public class WithdrawCashMng {
+
+	@Auto(name = WithdrawCashServiceImpl.class)
+	private WithdrawCashService withdrawCashService;
+
+	@Auto(name = VipBalanceServiceImpl.class)
+	private VipBalanceService vipBalanceService;
+
+	/**
+	 * 保存或修改会员提现
+	 * 
+	 * @param sourceId
+	 * @param closeConn
+	 * @param withdrawCash
+	 * @return
+	 */
+	public String saveOrUpWithdrawCash(String sourceId, boolean closeConn, HttpServletRequest request, HttpServletResponse response) {
+		WithdrawCash withdrawCash = (WithdrawCash) ReqToEntityUtil.reqToEntity(request, WithdrawCash.class);
+		String amount = request.getParameter("amount");
+		String account = request.getParameter("account");
+		amount = RSAUtil.decryptData(false, amount, false);
+		account = RSAUtil.decryptData(false, account, false);
+		Map<String, String> map = new HashMap<String, String>();
+		BigDecimal amounts = new BigDecimal(amount);
+		if (amounts.compareTo(withdrawCash.getWithdrawCashAmount()) != 0) {
+			map.put("status", "-3");
+			map.put("msg", "提现金额被篡改");
+			return JsonUtil.ObjToJson(map);
+		}
+		if (account.compareTo(withdrawCash.getWithdrawCashAccount()) != 0) {
+			map.put("status", "-3");
+			map.put("msg", "提现金额被篡改");
+			return JsonUtil.ObjToJson(map);
+		}
+		// 将提现对象中的会员的属性封装成会员
+		VipInfo vipinfo = new VipInfo();
+		vipinfo.setVipUUID(withdrawCash.getVipUUID());
+		vipinfo.setVipTel(withdrawCash.getVipPhoneNumber());
+		vipinfo.setLoginName(withdrawCash.getVipName());
+		// 调用会员余额的service查询会员的余额，若余额为空或为0或者提现金额大于余额，则返回余额不足
+		VipBalance balance = vipBalanceService.findVipBalance(sourceId, closeConn, vipinfo);
+
+		BigDecimal a = withdrawCash.getWithdrawCashAmount();// 会员提现金额
+		BigDecimal b = balance.getVipBalance();// 会员的余额
+		if (withdrawCash.getWithdrawCashAccount() == null || "".equals(withdrawCash.getWithdrawCashAccount())) {
+			map.put("status", "-2");
+			map.put("msg", "提现账号为空");
+			return JsonUtil.ObjToJson(map);
+		}
+		if (a.compareTo(new BigDecimal(0)) < 0) {
+			map.put("status", "-1");
+			map.put("msg", "提现金额不能小于0");
+			return JsonUtil.ObjToJson(map);
+		}
+		BigDecimal c = b.subtract(withdrawCash.getWithdrawCashFee());// 会员的余额减去提现的手续费等于可以提现的最大金额
+		if (b == null || (b == new BigDecimal(0)) || (a.compareTo(b) > 0)) {
+			map.put("status", "1");
+			map.put("msg", "余额不足");
+			return JsonUtil.ObjToJson(map);
+		}
+		if (c.compareTo(a) < 0) {// 如果最大提现金额低于会员的提现金额
+			balance.setVipBalance(new BigDecimal(0));// 会员将剩下的金额全部提现，则余额为0
+		} else {
+			// 会员提交提现申请就扣其在余额表中余额的值(余额减去提现金额和手续费)
+			balance.setVipBalance(b.subtract(a.add(withdrawCash.getWithdrawCashFee())));
+		}
+		vipBalanceService.saveOrUpVipBalance(sourceId, closeConn, balance);
+		if (withdrawCash.getId() == null) {
+			withdrawCash.setCashUUID(UUID.randomUUID().toString());
+			withdrawCash.setApplyTime(DateUtil.formatDate(new Date(),"yyyy-MM-dd HH:mm:ss"));
+			withdrawCash.setStatus("1");// 审核中
+			withdrawCash.setVipBalance(b);// 会员的余额
+			withdrawCash.setWithdrawStyle("手动提现");
+			withdrawCash.setWithdrawCashAccount(withdrawCash.getWithdrawCashAccount());
+			withdrawCash.setCanWithdrawCashAmount(c);// 会员最大可提现金额
+		}
+		if (withdrawCashService.saveOrUpWithdrawCash(sourceId, closeConn, withdrawCash)) {
+			map.put("status", "3");
+			map.put("msg", "提现申请提交成功");
+			return JsonUtil.ObjToJson(map);
+		} else {
+			map.put("status", "2");
+			map.put("msg", "提现申请提交失败");
+			return JsonUtil.ObjToJson(map);
+		}
+
+	}
+
+	/**
+	 * 查询会员提现列表
+	 * 
+	 * @param sourceId
+	 * @param closeConn
+	 * @param page
+	 * @param findMap
+	 * @return
+	 */
+	public String findWithdrawCashList(String sourceId, boolean closeConn, HttpServletRequest request, HttpServletResponse response) {
+		Map<String, String> findMap = ReqToMapUtil.reqToMap(request, WithdrawCash.class);
+		if (findMap != null) {
+			String startTime = request.getParameter("startTime");
+			String endTime = request.getParameter("endTime");
+			if (startTime != null && !"".equals(startTime)) {
+				startTime = startTime.replace("  ", " ");
+			}
+			if (endTime != null && !"".equals(endTime)) {
+				endTime = endTime.replace("  ", " ");
+			}
+			findMap.put("startTime", startTime);
+			findMap.put("endTime", endTime);
+			Page page = (Page) ReqToEntityUtil.reqToEntity(request, Page.class);
+			List<WithdrawCash> withdrawList = withdrawCashService.findWithdrawCashList(sourceId, closeConn, page, findMap);
+			if (page == null) {
+				return JsonUtil.ObjToJson(withdrawList);
+			} else {
+				return JsonUtil.ObjToJson(page);
+			}
+		} else {
+			return "[]";
+		}
+	}
+
+	/**
+	 * 查询会员个人的提现列表
+	 * 
+	 * @param sourceId
+	 * @param closeConn
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	public String findMyWithdrawCashList(String sourceId, boolean closeConn, HttpServletRequest request, HttpServletResponse response) {
+		String vipUUID = request.getParameter("vipUUID");
+		if (vipUUID == null || "".equals(vipUUID)) {
+			return "";
+		}
+		Page page = (Page) ReqToEntityUtil.reqToEntity(request, Page.class);
+		List<WithdrawCash> withdrawList = withdrawCashService.findMyWithdrawCashList(sourceId, closeConn, page, vipUUID);
+		if (page == null) {
+			return JsonUtil.ObjToJson(withdrawList);
+		} else {
+			return JsonUtil.ObjToJson(page);
+		}
+	}
+
+	/**
+	 * 更新会员提现的状态
+	 * 
+	 * @param sourceId
+	 * @param closeConn
+	 * @param request
+	 * @param response
+	 * @return
+	 * @throws Exception
+	 */
+	public String updateWithdrawCashStatus(String sourceId, boolean closeConn, HttpServletRequest request, HttpServletResponse response) throws Exception {
+		String cashUUID = request.getParameter("cashUUID");
+		String uuid = request.getParameter("uuid");
+		String status = request.getParameter("status");
+		Map<String, String> map = new HashMap<String, String>();
+		if (cashUUID == null || "".equals(cashUUID) || "null".equals(cashUUID)) {
+			map.put("status", "-1");
+			map.put("msg", "未获取到信息");
+			return JsonUtil.ObjToJson(map);
+		}
+		if (uuid == null || "".equals(uuid) || "null".equals(uuid)) {
+			map.put("status", "-1");
+			map.put("msg", "未获取到信息");
+			return JsonUtil.ObjToJson(map);
+		}
+		uuid = RSAUtil.decryptData(closeConn, uuid, false);
+		if (!uuid.equals(cashUUID)) {
+			map.put("status", "-3");
+			map.put("msg", "消息被篡改");
+			return JsonUtil.ObjToJson(map);
+		}
+		WithdrawCash withdrawCash = withdrawCashService.findWithdrawCash(sourceId, closeConn, cashUUID);
+		if (withdrawCash != null && "3".equals(status)) {
+			//转账成功之后才修改提现的状态等信息
+			if (transferToClient(sourceId, false, withdrawCash.getWithdrawCashAccount(), withdrawCash.getWithdrawCashAmount().toString())) {
+				withdrawCash.setStatus(status);
+				withdrawCash.setWithdrawCashTime(DateUtil.formatDate(new Date(), "yyyy-MM-dd HH:mm:ss"));
+				withdrawCashService.saveOrUpWithdrawCash(sourceId, closeConn, withdrawCash);
+				map.put("status", "3");
+				map.put("msg", "提现成功");
+				return JsonUtil.ObjToJson(map);
+			} else {
+				map.put("status", "3");
+				map.put("msg", "提现失败");
+				return JsonUtil.ObjToJson(map);
+			}
+		}
+		if (withdrawCash != null && "2".equals(status)) {
+			withdrawCash.setStatus(status);
+			withdrawCash.setWithdrawCashTime(DateUtil.formatDate(new Date(), "yyyy-MM-dd HH:mm:ss"));
+			withdrawCashService.saveOrUpWithdrawCash(sourceId, closeConn, withdrawCash);// 更新提现状态为2（提现失败）
+			// 由于提现失败，则要查询到会员的余额，将该会员的余额改为提现之前的原余额
+			VipBalance balance = vipBalanceService.findBalanceByVipUUID(sourceId, closeConn, withdrawCash.getVipUUID());
+			if (balance != null) {
+				balance.setVipBalance(withdrawCash.getVipBalance());
+				vipBalanceService.saveOrUpVipBalance(sourceId, closeConn, balance);
+			}
+			map.put("status", "-2");
+			map.put("msg", "提现失败");
+			return JsonUtil.ObjToJson(map);
+		}
+		map.put("status", "-1");
+		map.put("msg", "未获取到信息");
+		return JsonUtil.ObjToJson(map);
+	}
+
+	/**
+	 * 后台审核通过同意提现则调用企业支付宝账户转账给申请提现的个人用户账号
+	 * 
+	 * @param sourceId
+	 * @param closeConn
+	 * @param requests
+	 * @param responses
+	 * @return
+	 * @throws Exception
+	 */
+	private boolean transferToClient(String sourceId, boolean closeConn, String withdrawCashAccount, String withdrawCashAmount) throws Exception {
+
+		AlipayClient alipayClient = new DefaultAlipayClient("https://openapi.alipay.com/gateway.do", AlipayConfig.appid, AlipayConfig.private_transfer_key, "json", "GBK", AlipayConfig.alipay_public_transfer_key, "RSA");
+		AlipayFundTransToaccountTransferRequest request = new AlipayFundTransToaccountTransferRequest();
+		String out_biz_no = UtilDate.getOrderNum();
+		request.setBizContent("{" + "    \"out_biz_no\":\"" + out_biz_no + "\"," + "    \"payee_type\":\"ALIPAY_LOGONID\"," + "    \"payee_account\":\"" + withdrawCashAccount + "\"," + "    \"amount\":\"" + withdrawCashAmount + "\"," + "    \"payer_show_name\":\"会员提现\"," + "    \"payee_real_name\":\"\"," + "    \"remark\":\"转账备注\"," + "  }");
+		AlipayFundTransToaccountTransferResponse response;
+		try {
+			response = alipayClient.execute(request);
+			if (response.isSuccess()) {
+				System.out.println("调用成功");
+				return true;
+			} else {
+				System.out.println("调用失败");
+				return false;
+			}
+		} catch (AlipayApiException e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+}

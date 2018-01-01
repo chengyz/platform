@@ -1,0 +1,72 @@
+package com.platform.manage;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import spark.annotation.Auto;
+
+import com.mysql.jdbc.StringUtils;
+import com.platform.entity.MenuUser;
+import com.platform.service.IMenuUserService;
+import com.platform.service.impl.MenuUserServiceImpl;
+import com.util.JsonUtil;
+
+public class MenuUserMng {
+	@Auto(name=MenuUserServiceImpl.class)
+	private IMenuUserService userMenuService;
+	
+	public String addPermissionForUser(String sourceId, boolean closeConn, HttpServletRequest request, HttpServletResponse response){
+		String userUUID = request.getParameter("userUUID");
+		String unitUUID = request.getParameter("unitUUID");
+		String menuUUIDS = request.getParameter("menuUUIDS");//选择的菜单参数
+		Map<String, String> map = new HashMap<String, String>();
+		if (!StringUtils.isNullOrEmpty(userUUID)&&!StringUtils.isNullOrEmpty(menuUUIDS)){
+			userMenuService.deleteMenuUser(sourceId, closeConn, null,userUUID);
+			String[] menusList = menuUUIDS.split(",");
+			List<MenuUser> menuList = new ArrayList<MenuUser>();
+			for (String menuUUID : menusList) {
+				MenuUser menuUser = new MenuUser();
+				menuUser.setUserUUID(userUUID);
+				menuUser.setMenuUUID(menuUUID);
+				menuUser.setUnitUUID(unitUUID);
+				menuList.add(menuUser);
+			}
+			if (userMenuService.saveMenuUser(sourceId, closeConn, menuList)){
+				map.put("status", "1");
+				map.put("msg", "权限分配成功");
+				return JsonUtil.ObjToJson(map);
+			}else{
+				map.put("status", "0");
+				map.put("msg", "权限分配失败");
+				return JsonUtil.ObjToJson(map);
+			}
+		}else{
+			map.put("status", "0");
+			map.put("msg", "权限分配失败");
+			return JsonUtil.ObjToJson(map);
+		}
+		
+	}
+	
+	public String findAllMenuItemToAddPermission(String sourceId, boolean closeConn, HttpServletRequest request, HttpServletResponse response){
+		String unitUUID = request.getParameter("unitUUID");
+		String userUUID = request.getParameter("userUUID");
+		if (!StringUtils.isNullOrEmpty(unitUUID)&&!StringUtils.isNullOrEmpty(userUUID)){
+			@SuppressWarnings("rawtypes")
+			List<Map> listMap = userMenuService.findAllMenuItemForUser(sourceId, closeConn, userUUID, unitUUID);
+			if (listMap!=null){
+				return JsonUtil.ObjToJson(listMap);
+			}else{
+				return JsonUtil.ObjToJson("[]");
+			}
+		}else{
+			return JsonUtil.ObjToJson("[]");
+		}
+		
+	}
+}

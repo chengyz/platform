@@ -1,0 +1,275 @@
+package com.sctgz.platform.service.impl;
+
+import java.text.DecimalFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+
+import spark.annotation.Auto;
+
+import com.mysql.jdbc.StringUtils;
+import com.sctgz.platform.entity.MenuInfo;
+import com.sctgz.platform.entity.VipInfo;
+import com.sctgz.platform.service.IVipService;
+import com.sctgz.util.DateUtil;
+
+import dbengine.dao.EntityDao;
+import dbengine.dao.SqlDao;
+import dbengine.util.Page;
+
+public class VipServiceImpl implements IVipService{
+
+	@Auto(name=SqlDao.class)
+	private SqlDao sqldao;
+	
+	@Auto(name=EntityDao.class)
+	private EntityDao entitydao;
+	@Override
+	public boolean saveOrUpVip(String sourceId, boolean closeConn, VipInfo vip) {
+		if(vip==null){
+			return false;
+		}
+		if(vip.getId()==null){
+			if(vip.getLoginName()==null){
+				vip.setLoginName(vip.getVipMobile());//登陆账号默认为手机号
+			}
+			vip.setVipCredit("5.00");
+			vip.setCertificateStatus("4");
+			//设置创建时间
+			vip.setCreateTime(DateUtil.formatDate(new Date(), "yyyy-MM-dd HH:mm:ss"));
+			//新增
+			return entitydao.saveEntity(sourceId, vip, closeConn);
+		}else{
+			//修改
+			return entitydao.updateEntity(sourceId, vip, closeConn);
+		}
+	}
+
+	@Override
+	public List<VipInfo> findVipInfoList(String sourceId, boolean closeConn, Page page,Map<String, String> findMap) {
+		StringBuilder sql = new StringBuilder();
+		sql.append("select * from vip_info where 1=1 ");
+		if(findMap!=null){
+			//登陆名
+			if(findMap.get("loginName")!=null && !"".equals(findMap.get("loginName"))){
+				sql.append(" and loginName like '%").append(findMap.get("loginName").toString().replace("'", "''")).append("%'");
+			}
+			//会员名
+			if(findMap.get("vipName")!=null && !"".equals(findMap.get("vipName"))){
+				sql.append(" and vipName like '%").append(findMap.get("vipName").toString().replace("'", "''")).append("%'");
+			}
+			//手机号
+			if(findMap.get("vipMobile")!=null && !"".equals(findMap.get("vipMobile"))){
+				sql.append(" and vipMobile like '%").append(findMap.get("vipMobile").toString().replace("'", "''")).append("%'");
+			}
+			//会员类型
+			if(findMap.get("vipType")!=null && !"".equals(findMap.get("vipType"))){
+				sql.append(" and vipType = '").append(findMap.get("vipType").toString().replace("'", "''")).append("'");
+			}
+		}
+		if(page==null){
+			return sqldao.findListBySql(sourceId, sql.toString(), VipInfo.class, closeConn, null);
+		}else{
+			return sqldao.findPageByMysql(sourceId, sql.toString(), closeConn, VipInfo.class, page, null);
+		}
+	}
+
+	@Override
+	public boolean upVipPwd(String sourceId, boolean closeConn, String vipUUID, String oldPwd, String newPwd) {
+		if(vipUUID==null || "".equals(vipUUID) || newPwd==null || "".equals(newPwd)){
+			return false;
+		}
+		StringBuilder sql = new StringBuilder();
+		List<Object> params = new ArrayList<Object>();
+		sql.append("update vip_info set vipPwd = ? ");
+		params.add(newPwd);
+		sql.append(" where vipUUID = ?");
+		params.add(vipUUID);
+		if(oldPwd!=null && !"".equals(oldPwd) && !"null".equals(oldPwd)){
+			sql.append(" and vipPwd = ? ");
+			params.add(oldPwd);
+		}
+		//返回false则表示用户名或密码错误
+		return sqldao.executeSql(sourceId, sql.toString(), closeConn, params);
+	}
+
+	@Override
+	public boolean findVipMobileExists(String sourceId, boolean closeConn, String vipMobile) {
+		if(vipMobile==null || "".equals(vipMobile)){
+			return false;
+		}
+		String sql = "select * from vip_info where vipMobile='"+vipMobile.replace("'", "''")+"'";
+		VipInfo vinfo= (VipInfo)sqldao.findEntityBySql(sourceId, sql, VipInfo.class, closeConn, null);
+		if(vinfo==null){
+			return false;
+		}
+		return true;
+	}
+
+	@Override
+	public boolean deleteVip(String sourceId, boolean closeConn, String vipUUID) {
+		if(vipUUID==null || "".equals(vipUUID)){
+			return false;
+		}
+		String sql = "delete from vip_info where vipUUID='"+vipUUID.replace("'", "''")+"'";
+		return sqldao.executeSql(sourceId, sql, closeConn, null);
+	}
+
+	@Override
+	public VipInfo findVipInfoByUUID(String sourceId, boolean closeConn, String VipUUID) {
+		if(VipUUID==null || "".equals(VipUUID)){
+			return null;
+		}
+		String sql = "select * from vip_info where vipUUID='"+VipUUID+"'";
+		return (VipInfo)sqldao.findEntityBySql(sourceId, sql, VipInfo.class, closeConn, null);
+	}
+
+	@Override
+	public boolean updateVipStatus(String sourceId, boolean closeConn,String VipUUID, String status) {
+		if(VipUUID==null || "".equals(VipUUID) || status==null || "".equals(status)){
+			return false;
+		}
+		String sql = "update vip_info set vipStatus='"+status.replace("'", "")+"' where vipUUID = '"+VipUUID.replace("'", "''")+"'";		
+		return sqldao.executeSql(sourceId, sql, closeConn, null);
+	}
+
+	@Override
+	public List<MenuInfo> findMenuByVipUUID(String sourceId, boolean closeConn, String VipUUID, String menuParentCode) {
+		if(VipUUID==null || "".equals(VipUUID)){
+			return null;
+		}
+		StringBuilder sql = new StringBuilder();
+		List params = new ArrayList();
+		sql.append("select * from menu_info where menuUUID in (");
+			sql.append("select menuUUID from menu_vip where vipUUID=?");
+			params.add(VipUUID);
+		sql.append(")");
+		return sqldao.findListBySql(sourceId, sql.toString(), MenuInfo.class, closeConn, params);
+	}
+
+	@Override
+	public int findVipCount(String sourceId, boolean closeConn){
+		String sql = "select * from vip_info";
+		try {
+			return sqldao.getTotal(sourceId, sql, null);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return 0;
+	}
+	@Override
+	public boolean findLoginNameExist(String sourceId, boolean closeConn, String loginName) {
+		if(loginName==null || "".equals(loginName)){
+			return false;//参数错误
+		}
+		String sql = "select * from vip_info where loginName='"+loginName.replace("'", "''")+"'";
+		Object user = sqldao.findEntityBySql(sourceId, sql, VipInfo.class, closeConn, null);
+		if(user==null){
+			return false;
+		}else{
+			user=null;
+			return true;
+		}
+	}
+
+	@Override
+	public VipInfo findVipInfo(String sourceId, boolean closeConn, Map<String, String> findMap) {
+		StringBuilder sql = new StringBuilder();
+		List<Object> params = new ArrayList<Object>();
+		sql.append("select * from vip_info where 1=1");
+		if(findMap!=null){
+			if(findMap.get("id")!=null && !"".equals(findMap.get("id")) && !"null".equals(findMap.get("id"))){
+				//UUID唯一编号
+				sql.append(" and id = ?");
+				params.add(findMap.get("id"));
+			}
+			if(findMap.get("vipUUID")!=null && !"".equals(findMap.get("vipUUID")) && !"null".equals(findMap.get("vipUUID"))){
+				//UUID唯一编号
+				sql.append(" and vipUUID = ?");
+				params.add(findMap.get("vipUUID"));
+			}
+			if(findMap.get("loginName") != null && !"".equals(findMap.get("loginName")) && !"null".equals(findMap.get("loginName"))){
+				sql.append(" and loginName = ?");
+				params.add(findMap.get("loginName"));
+			}
+			if(findMap.get("vipPwd") != null && !"".equals(findMap.get("vipPwd")) && !"null".equals(findMap.get("vipPwd"))){
+				sql.append(" and vipPwd = ?");
+				params.add(findMap.get("vipPwd"));
+			}
+		}
+	   return (VipInfo)sqldao.findEntityBySql(sourceId, sql.toString(), VipInfo.class, closeConn, params);
+	}
+	/**
+	 * 手机找回密码
+	 */
+	@Override
+	public boolean findPwd(String sourceId, boolean closeConn, String vipPwd,String loginName) {
+		if(vipPwd==null || vipPwd.equals("") ||loginName==null || loginName.equals("")){
+			return false;
+		}
+		StringBuilder sql = new StringBuilder();
+		List<Object> params = new ArrayList<Object>();
+		sql.append("update vip_info set vipPwd = ? ");
+		params.add(vipPwd);
+		sql.append(" where loginName = ?");
+		params.add(loginName);
+		return sqldao.executeSql(sourceId, sql.toString(), closeConn, params);
+	}
+
+	@Override
+	public boolean updateVipInfo(String sourceId, boolean closeConn,
+			String fields, List<Object> params, String id, String vipUUID) {
+		if(StringUtils.isNullOrEmpty(fields)){
+			return false;
+		}
+		if(StringUtils.isNullOrEmpty(id)&& StringUtils.isNullOrEmpty(vipUUID)){
+			return false;
+		}
+		StringBuilder sql = new StringBuilder();
+		sql.append("update vip_info set "+fields+" where 1 = 1 ");
+		if (!StringUtils.isNullOrEmpty(id)){
+			sql.append(" and id = ?");
+			params.add(id);
+		}
+		if (!StringUtils.isNullOrEmpty(vipUUID)){
+			sql.append(" and vipUUID = ?");
+			params.add(vipUUID);
+		}
+		return sqldao.executeSql(sourceId, sql.toString(), closeConn, params);
+	}
+
+	@Override
+	public VipInfo findVipInfoByOrderUUID(String sourceId, boolean closeConn, String orderUUID) {
+		if(orderUUID==null || "".equals(orderUUID)){
+			return null;
+		}
+		String sql = "select v.* from vip_info v join order_people o on v.vipUUID = o.getUUID where o.orderUUID='"+orderUUID+"'";
+		return (VipInfo)sqldao.findEntityBySql(sourceId, sql, VipInfo.class, closeConn, null);
+	}
+	/**
+	 * 统计会员信用分
+	 */
+	@Override
+	public String vipCredit(String sourceId, boolean closeConn, String vipUUID){
+		if(vipUUID == null || "".equals(vipUUID)){
+			return "";
+		}
+		StringBuilder sql = new StringBuilder();
+		sql.append("select sum(starGrade) as a from evaluate_info where vipUUID = '").append(vipUUID).append("'");
+		StringBuilder sql1 = new StringBuilder();
+		sql1.append("select count(starGrade) from evaluate_info where vipUUID = '").append(vipUUID).append("'");
+		try {
+			int b = sqldao.getTotal(sourceId, sql1.toString(), null);//被评价次数
+			Map map = sqldao.findMapBysql(sourceId, sql.toString(), closeConn, null);
+			int star = Integer.parseInt(map.get("a").toString().split("\\.")[0]);//获取该会员的总星级
+			float num= (float)star/b;   
+			DecimalFormat df = new DecimalFormat("0.00");  
+			String s = df.format(num);
+			return s;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return "";	
+	}
+}

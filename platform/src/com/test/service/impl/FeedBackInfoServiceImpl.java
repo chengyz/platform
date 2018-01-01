@@ -1,0 +1,87 @@
+package com.test.service.impl;
+
+import java.util.List;
+import java.util.Map;
+
+import spark.annotation.Auto;
+
+import com.test.entity.FeedBackInfo;
+import com.test.service.FeedBackInfoService;
+
+import dbengine.dao.EntityDao;
+import dbengine.dao.SqlDao;
+import dbengine.util.Page;
+/**
+ * 反馈信息列表的service实现
+ * @author chengyz
+ *
+ */
+public class FeedBackInfoServiceImpl implements FeedBackInfoService{
+	@Auto(name=SqlDao.class)
+	private SqlDao sqldao;
+	@Auto(name=EntityDao.class)
+	private EntityDao entityDao;
+	/**
+	 * 保存或修改反馈信息
+	 */
+	@Override
+	public boolean saveOrUpdateFeedBackInfo(String sourceId, boolean closeConn, FeedBackInfo feedBackInfo) {
+		if(feedBackInfo == null) {
+			return false;
+		}
+		if(feedBackInfo.getId() == null) {
+			return entityDao.saveEntity(sourceId, feedBackInfo, closeConn);
+		} else {
+			return entityDao.updateEntity(sourceId, feedBackInfo, closeConn);
+		}
+	}
+	/**
+	 * 删除反馈信息
+	 */
+	@Override
+	public boolean deleteFeedBackInfo(String sourceId, boolean closeConn, String uuid) {
+		if(uuid == null || "".equals(uuid) || "null".equals(uuid)) {
+			return false;
+		}
+		String sql = "delete from feed_back_info where uuid = '"+uuid+"'";
+		return sqldao.executeSql(sourceId, sql, closeConn, null);
+	}
+	/**
+	 * 查询反馈信息
+	 */
+	@Override
+	public FeedBackInfo findFeedBackInfo(String sourceId, boolean closeConn, String uuid) {
+		if(uuid == null || "".equals(uuid) || "null".equals(uuid)) {
+			return null;
+		}
+		String sql = "select * from feed_back_info where uuid = '"+uuid+"'";
+		return (FeedBackInfo)sqldao.findEntityBySql(sourceId, sql, FeedBackInfo.class, closeConn, null);
+	}
+	/**
+	 * 查询反馈信息列表
+	 */
+	@Override
+	public List<FeedBackInfo> findFeedBackInfoList(String sourceId, boolean closeConn, Page page, Map findMap) {
+		StringBuilder sql = new StringBuilder();
+		sql.append("select * from feed_back_info where 1 = 1 ");
+		if(findMap != null) {
+			if(findMap.get("status") != null && !"".equals(findMap.get("status")) && !"null".equals(findMap.get("status"))) {
+				sql.append(" and status = '").append(findMap.get("status")).append("'");
+			}
+			if(findMap.get("vipName") != null && !"".equals(findMap.get("vipName")) && !"null".equals(findMap.get("vipName"))) {
+				sql.append(" and vipName = '").append(findMap.get("vipName")).append("'");
+			}
+			if(findMap.get("vipMobile") != null && !"".equals(findMap.get("vipMobile")) && !"null".equals(findMap.get("vipMobile"))) {
+				sql.append(" and vipMobile = '").append(findMap.get("vipMobile")).append("'");
+			}
+		}
+		if(page == null) {
+			return sqldao.findListBySql(sourceId, sql.toString(), FeedBackInfo.class, closeConn, null);
+		} else {
+			return sqldao.findPageByMysql(sourceId, sql.toString(), closeConn, FeedBackInfo.class, page, null);
+		}
+	}
+
+	
+
+}

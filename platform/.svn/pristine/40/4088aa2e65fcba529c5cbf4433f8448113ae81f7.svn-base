@@ -1,0 +1,99 @@
+package com.sctgz.util;
+
+import java.util.ArrayList;
+import java.util.List;
+import com.google.gson.GsonBuilder;
+
+/**
+ * Json操作相关工具类（依赖引用google的gson包）
+ * 
+ * @author hshzh
+ * 
+ */
+public class JsonUtil {
+	/**
+	 * 对象转换为json字符串
+	 * 
+	 * @param obj
+	 * @return
+	 */
+	public static String ObjToJson(Object obj) {
+		if (obj == null) {
+			return "";
+		}
+		return (new GsonBuilder().create()).toJson(obj);
+	}
+
+	/**
+	 * json字符串转换为对象
+	 * 
+	 * @param json
+	 * @param c
+	 * @return
+	 */
+	public static Object JsonToObj(String json, Class<?> c) {
+		if (json == null || "".equals(json) || c == null) {
+			return null;
+		}
+		return (new GsonBuilder().create()).fromJson(json, c);
+	}
+
+	/**
+	 * 生成json树
+	 * 
+	 * @param treeBeanList
+	 *            需要生成json树的List<TreeBean>
+	 * @param showTopNode
+	 *            是否显示顶级节点
+	 * @param topCode
+	 *            顶级节点编号
+	 * @return
+	 */
+	public static String getJsonTree(List<TreeBean> treeBeanList, boolean showTopNode, String topCode) {
+		if (treeBeanList == null || treeBeanList.size() < 1) {
+			// 参数错误
+			return null;
+		}
+		try {
+			if (!showTopNode) {
+				// 不需要生成顶级节点,只需要生成下级节点
+				List<TreeBean> newTreeList = new ArrayList<TreeBean>();
+				getChildJson(treeBeanList, topCode, newTreeList);
+				return ObjToJson(newTreeList);
+			} else {
+				for (TreeBean tree : treeBeanList) {
+					if (topCode.equals(tree.getId())) {// 先找到顶级节点
+						// 开始递归生成子节点
+						List<TreeBean> newTreeList = new ArrayList<TreeBean>();
+						tree.setChildren(newTreeList);
+						getChildJson(treeBeanList, topCode, newTreeList);
+						return ObjToJson(tree);
+					}
+				}
+			}
+		} catch (Exception ex) {
+			ex.printStackTrace();
+		}
+		return null;
+	}
+	/**
+	 * 生成子节点
+	 * @param treeBeanList
+	 * @param parentCode
+	 * @param treeList
+	 */
+	private static void getChildJson(List<TreeBean> treeBeanList, String parentCode, List<TreeBean> treeList) {
+		if (treeBeanList == null || treeBeanList.size() < 1 || parentCode == null || "".equals(parentCode)) {
+			return;
+		}
+		for (TreeBean tree : treeBeanList) {
+			if (parentCode.equals(tree.getpId())) {// 判断是否存在直接下级节点
+				treeList.add(tree);
+				// 递归生成子节点
+				List<TreeBean> newTreeList = new ArrayList<TreeBean>();
+				tree.setChildren(newTreeList);
+				getChildJson(treeBeanList, tree.getId(), newTreeList);
+			}
+		}
+	}
+}

@@ -1,0 +1,99 @@
+body {
+	text-align: center; font-family: "����"; background-color: #ffffff; font-size: 0px
+}
+
+ul {
+	padding-bottom: 0px; margin: 0px; padding-left: 0px; padding-right: 0px; paddinf-top: 0px
+}
+ol {
+	padding-bottom: 0px; margin: 0px; padding-left: 0px; padding-right: 0px; paddinf-top: 0px
+}
+li {
+	padding-bottom: 0px; margin: 0px; padding-left: 0px; padding-right: 0px; paddinf-top: 0px
+}
+div {
+	text-align: left; OVERFLOW: hidden
+}
+
+img {
+	border-right-width: 0px; border-top-width: 0px; border-bottom-width: 0px; VERTICAL-AliGN: top; border-left-width: 0px
+}
+
+
+
+.picshow {
+	border-bottom: #d9e0ea 0px solid; border-left: #d9e0ea 0px solid; margin: 0px auto; width: 100%; height: 100%; border-top: #d9e0ea 0px solid; border-right: #d9e0ea 0px solid
+}
+
+#picarea {
+	margin: 0 auto; width: 100%; BACKGROUND: #fff; height: 100%
+}
+#bigpicarea {
+	position: relative; margin: 0px auto; width: 100%; height: 80%; OVERFLOW: hidden
+}
+.image {
+	text-align: center
+}
+.image img {
+	border-bottom: #ececec 0px solid; border-left: #ececec 0px solid; margin: 0px auto; border-top: #ececec 0px solid; border-right: #ececec 0px solid
+}
+#bigpicarea .word {
+	text-align: center; height: 0px; COLOR: #333
+}
+#bigpicarea .word h3 {
+	text-align: center; liNE-height: 0px; height: 0px; COLOR: #333; font-size: 0px
+}
+#bigpicarea .ui-els-hide {
+	display: none
+}
+#thumbs {
+	liST-STYLE-TYPE: none; margin: 0px auto; width: 100%; height: 70%
+}
+* html #thumbs {
+	height: 70%
+}
+#thumbs li {
+	margin: 0% 1%; width: 6%; display: inline; FLOAT: left; height: 50%
+}
+#thumbs ul {
+	margin: 2% auto
+}
+#thumbs li.last_img {
+	margin-right: 1%
+}
+#thumbs li.first {
+	margin: 2% 1% 0% 2%; width: 2%; height: 2%; cursor: pointer
+}
+#thumbs li.last {
+	margin: 2% 1% 0% 2%; width: 2%; height: 2%; cursor: pointer
+}
+#thumbs li a {
+	border-bottom: #fff 2px solid; border-left: #fff 2px solid; width:100%; height: 100%; display: block; font-size: 0px; border-top: #fff 2px solid; border-right: #fff 2px solid
+}
+#thumbs li a:hover {
+	border-bottom: #000 2px solid; border-left: #000 2px solid; border-top: #000 2px solid; border-right: #000 2px solid
+}
+#thumbs li a.current {
+	border-bottom: #f8ae0f 2px solid; border-left: #f8ae0f 2px solid; border-top: #f8ae0f 2px solid; border-right: #f8ae0f 2px solid
+}
+#thumbs li.first img {
+	
+}
+#thumbs li.last img {
+	
+}
+.bigbtnPrev {
+	z-index: 100; position: absolute; width: 35px; height: 51px; top: 186px; CURSOR: pointer; left: 30px
+}
+.bigbtnNext {
+	z-index: 100; position: absolute; width: 35px; height: 51px; top: 186px; CURSOR: pointer; right: 30px
+}
+#big_play_prev {
+	background-image: url(../img/leftbig.png); width: 35px; display: block; height: 51px; _background: none; _filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(sizingMethod=crop,src='../img/leftbig.png')
+}
+#big_play_next {
+	background-image: url(../img/rightbig.png); width: 35px; display: block; height: 51px; _background: none; _filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(sizingMethod=crop,src='../img/rightbig.png')
+}
+#smallpicarea {
+	margin: 0 auto; width: 100%; height: auto; border-top: #ececec 0px solid; paddinf-top: 2%
+}

@@ -1,0 +1,207 @@
+package com.sctgz.util;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Scanner;
+import java.util.UUID;
+
+import com.mysql.jdbc.StringUtils;
+
+import dbengine.util.DESUtil;
+
+/**
+ * 
+ * @author hshzh
+ *
+ */
+public class ComputePbblt {	
+	/**
+	 * 概率计算公式
+	 * @param A
+	 * @param C
+	 * @param B
+	 * @param D
+	 * @param E
+	 * @param F
+	 * @param gkType
+	 * @return
+	 */
+	public static String computePbblt(Double A,Double C,Double B,Double D,Double E,Double F,String gkType){
+		F=F+5;
+		C=C+2;
+		Double rStr=0.0;
+		float a = Float.valueOf(A.toString());
+		float c = Float.valueOf(C.toString());
+		float b = Float.valueOf(B.toString());
+		if(c==b){
+			B=B-50;
+			C=C-2;
+		}
+		if(c==Float.valueOf("5892") || c==Float.valueOf("27215") || c==Float.valueOf("24452")|| c==Float.valueOf("70692") || c==Float.valueOf("39589") || c==Float.valueOf("90519")){
+			C=C+2;
+		}
+        c = Float.valueOf(C.toString());
+		b = Float.valueOf(B.toString());
+		float d = Float.valueOf(D.toString());
+		float e = Float.valueOf(E.toString());
+		float f = Float.valueOf(F.toString());
+		if(d>=a && d<=e && e>a){
+			rStr = 99.9-(10/(E-A))*(D-A);
+		}else if(d>e && d<=b && b>e){
+			rStr=90-(40/(B-E))*(D-E);
+		}else if(c>b && d<=c && d>b){
+				rStr = 50-(25/(C-B))*(D-B);
+		}else if(f>c && d>c && d<=f){
+			rStr = 25-((D-C)/(F-C))*25;
+		}
+		/*
+		if(a<e && e<b && b<c && c<f){
+			if(d<=b && d>e){
+				rStr = 95-((D-E)*(40/(B-E)));
+			}else if(d<=e){
+				rStr = Float.valueOf("99.9")-(D-A)*(5/(E-A));
+			}else if(d>b && d<=c){
+				rStr = 60-(D-B)*(40/(C-B));
+			}else if(d>c && c<=f){
+				if(d==f){
+					rStr = (20-(D-C)*(20/(F-C)))+(B/F);
+				}else{
+					rStr = (20-(D-C)*(20/(F-C)));
+				}
+				
+			}
+		}else if(b==c && e<f && d<=b){
+			if(d>=e){
+				rStr=95-(95/((F-E)*(D-E)));
+			}else if(d<e){
+				rStr = Float.valueOf("99.9")-(D-A)*(5/(E-A));
+			}
+		}else if(e>f && b>f && c>f){
+			rStr = Float.valueOf("99.9")-((100/(F-A))*(D-A));
+		}else if(c>f && c!=b && b<f && d>b){
+			rStr = 60-((60/(F-B))*(D-B));
+		}else if(c>f && d<=e){
+			rStr = Float.valueOf("99.9")-(D-A)*(5/(E-A));
+		}
+		if(rStr>=100){
+			rStr=Double.valueOf("99.9");
+		}
+ 		if(rStr==0 && d<=f){
+			rStr=Double.valueOf("0.01");
+		}else if(rStr==0 && D>F){
+			rStr=Double.valueOf("0.00");
+		}
+		*/
+		return StrToLength(rStr+"",5)+"%";
+	}
+	public static String StrToLength(String str,int leng){
+		if(str.length()<leng){
+			for(int i=str.length();i<leng;i++){
+				str += "0";
+			}
+			return str;
+		}else{
+			return str.substring(0,leng);
+		}
+	}
+	public static String test(float D,float B,float E){
+		if(D<=B){
+			float x = (D-E)*(40/(B-E));
+			//float x1 = (E-D);
+			//float x2 = (B)
+			return (100-x)+"";
+		}
+		return "";
+	}
+	public static void main(String[] sarg){
+		//String x=ComputePbblt.computePbblt(8, Float.valueOf("15.0"), 1, 21);
+		String x=ComputePbblt.test(3, Float.valueOf("15.0"), Float.valueOf("1.0"));
+		System.out.println("x===="+x);
+		Map map = new HashMap();
+		map.put("x1", "x1");
+		map.put("x2", "x2");
+		map.put("x3", "x3");
+		map.remove("x3");
+		Iterator it = map.keySet().iterator();
+		long testL=Long.valueOf("20160520102030");
+		long testL2=Long.valueOf("20160520102030");
+		System.out.println(testL2>testL);
+		while(it.hasNext()){
+			String key = (String)it.next();
+			System.out.println("x===="+key);
+		}
+		try {
+			MD5 m = new MD5();
+			System.out.println("uuid==="+UUID.randomUUID());
+			System.out.println(m.getMD5ofStr("000000"));
+			System.out.println(DESUtil.encrypt("2000", m.getMD5ofStr("000000")));//KJRjpbLGXUM=
+			System.out.println(DESUtil.decrypt("NPvQ8QyZIC8=", m.getMD5ofStr("000000")));
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+	} 
+	
+	/** 
+	 * 比较版本号的大小,前者大则返回一个正数,后者大返回一个负数,相等则返回0 
+	 * @param version1 形如：1.0.0
+	 * @param version2 形如：10.1.0
+	 * @return 
+	 */  
+	public static int compareVersion(String version1, String version2) throws Exception {  
+	    if (version1 == null || version2 == null) {  
+	        throw new Exception("compareVersion error:illegal params.");  
+	    }  
+	    String[] versionArray1 = version1.split("\\.");//注意此处为正则匹配，不能用"."；  
+	    String[] versionArray2 = version2.split("\\.");  
+	    int idx = 0;  
+	    int minLength = Math.min(versionArray1.length, versionArray2.length);//取最小长度值  
+	    int diff = 0;  
+	    while (idx < minLength  
+	            && (diff = versionArray1[idx].length() - versionArray2[idx].length()) == 0//先比较长度  
+	            && (diff = versionArray1[idx].compareTo(versionArray2[idx])) == 0) {//再比较字符  
+	        ++idx;  
+	    }  
+	    //如果已经分出大小，则直接返回，如果未分出大小，则再比较位数，有子版本的为大；  
+	    diff = (diff != 0) ? diff : versionArray1.length - versionArray2.length;  
+	    return diff;  
+	}
+	
+    /**
+     * 通过版本号获取更新日志
+     * @param version app版本
+     * @param path txt文件路径
+     * @return
+     */
+    public static String getAppVersionLog(String version, String path) {
+    	Scanner in = null;
+        try {
+        	File file = new File(path);
+        	if(file.exists()){
+        		in = new Scanner(file, "unicode");
+        		while (in.hasNextLine()) {
+        			String str = in.nextLine();
+        			if(!StringUtils.isNullOrEmpty(str)){
+        				String[] tmp = str.split("=");
+        				if(version.equals(tmp[0].trim())){
+        					return tmp[1];
+        				}
+        			}
+        		}
+        	}
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }finally{
+        	if(in != null){
+        		in.close();
+        	}
+        }
+        
+        return "";
+    }
+
+}

@@ -1,0 +1,174 @@
+package com.test.service.impl;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+import spark.annotation.Auto;
+
+import com.test.entity.VipSendAddress;
+import com.test.service.VipSendAddressService;
+
+import dbengine.dao.EntityDao;
+import dbengine.dao.SqlDao;
+import dbengine.util.Page;
+/**
+ * 会员自己添加收货地址的service接口实现
+ * @author chengyz
+ *
+ */
+public class VipSendAddressServiceImpl implements VipSendAddressService {
+	@Auto(name=SqlDao.class)
+	private SqlDao sqldao;
+	
+	@Auto(name=EntityDao.class)
+	private EntityDao entityDao;
+	/**
+	 * 查询地址
+	 */
+	@Override
+	public VipSendAddress findAddress(String sourceId, boolean closeConn, String addressUUID) {
+		if(addressUUID == null && "".equals(addressUUID)){
+			return null;
+		}
+		StringBuilder sql = new StringBuilder();
+		sql.append("select * from vip_send_address where addressUUID = '").append(addressUUID.replace("'", "")).append("'");
+		return (VipSendAddress)sqldao.findEntityBySql(sourceId, sql.toString(), VipSendAddress.class, closeConn, null);
+	}
+	
+	/**
+	 * 会员登录时查询默认收货地址
+	 */
+	@Override
+	public VipSendAddress findDefaultAddress(String sourceId, boolean closeConn, String vipUUID) {
+		if(vipUUID == null && "".equals(vipUUID)){
+			return null;
+		}
+		StringBuilder sql = new StringBuilder();
+		sql.append("select * from vip_send_address where vipUUID = '").append(vipUUID.replace("'", "")).append("'");
+		sql.append(" and flag = '2'");
+		return (VipSendAddress)sqldao.findEntityBySql(sourceId, sql.toString(), VipSendAddress.class, closeConn, null);
+	}
+	/**
+	 * 删除收货地址
+	 */
+	@Override
+	public boolean deleteAddress(String sourceId, boolean closeConn, String addressUUID) {
+		if(addressUUID == null || "".equals(addressUUID)){
+			return false;
+		}
+		StringBuilder sql = new StringBuilder();
+		sql.append("delete from vip_send_address where addressUUID = '").append(addressUUID.replace("'", "")).append("'");//再删除地址表中的地址点
+		return sqldao.executeSql(sourceId, sql.toString(), closeConn, null);
+	}
+	/**
+	 * 新增收货地址
+	 */
+	@Override
+	public boolean saveAddress(String sourceId,boolean closeConn,VipSendAddress vipSendAddress) {
+		if(vipSendAddress == null){
+			return false;
+		}
+		if(vipSendAddress.getId() == null){
+			vipSendAddress.setAddressUUID(UUID.randomUUID().toString());
+			StringBuilder sql = new StringBuilder();
+			sql.append("select * from vip_send_address  where flag = '2' and vipUUID = '").append(vipSendAddress.getVipUUID()).append("'");
+			VipSendAddress address = (VipSendAddress)sqldao.findEntityBySql(sourceId, sql.toString(), VipSendAddress.class, closeConn, null);
+			if(address != null){
+				address.setFlag("1");
+			}
+			entityDao.updateEntity(sourceId, address, closeConn);//修改原先的默认地址点为非默认的
+			return entityDao.saveEntity(sourceId, vipSendAddress, closeConn);
+		}else{
+			return entityDao.updateEntity(sourceId, vipSendAddress, closeConn);
+		}
+	}
+	/**
+	 * 查询地址列表
+	 */
+	@Override
+	public List<VipSendAddress> findAddressList(String sourceId, boolean closeConn, Page page, Map<String, String> findMap) {
+		StringBuilder sql = new StringBuilder();
+		sql.append("select * from vip_send_address where 1 = 1 ");
+		if(findMap != null){
+			if(findMap.get("vipPhoneNumber") != null && !"".equals(findMap.get("vipPhoneNumber"))){
+				sql.append(" and vipPhoneNumber = '").append(findMap.get("vipPhoneNumber").replace("'", "")).append("'");
+			}
+			if(findMap.get("vipUUID") != null && !"".equals(findMap.get("vipUUID"))){
+				sql.append(" and vipUUID = '").append(findMap.get("vipUUID").replace("'", "")).append("'");
+			}
+			if(findMap.get("contactPhoneNumber") != null && !"".equals(findMap.get("contactPhoneNumber"))){
+				sql.append(" and contactPhoneNumber = '").append(findMap.get("contactPhoneNumber")).append("'");
+			}
+			if(findMap.get("code") != null && !"".equals(findMap.get("code"))){
+				sql.append(" and code = '").append(findMap.get("code").replace("'", "")).append("'");
+			}
+			if(findMap.get("address") != null && !"".equals(findMap.get("address"))){
+				sql.append(" and address like '%").append(findMap.get("address")).append("%'");
+			}
+		}
+		if(page == null){
+			return sqldao.findMapListBysql(sourceId, sql.toString(), closeConn, null);
+		}else{
+			return sqldao.findPageByMysql(sourceId, sql.toString(), closeConn, null, page, null);
+		}
+	}
+	/**
+	 * 会员将收货地址点添加或修改为默认（1为非默认地址点，2为默认的地址点）
+	 */
+	@Override
+	public boolean updataDefaultAddress(String sourceId, boolean closeConn, VipSendAddress vipSendAddress) {
+		if(vipSendAddress == null){
+			return false;
+		}
+		StringBuilder sql1 = new StringBuilder();
+		sql1.append("select * from vip_send_address where flag = '2' and vipUUID = '").append(vipSendAddress.getVipUUID()).append("'");//查询默认收货地址
+		VipSendAddress address = (VipSendAddress)sqldao.findEntityBySql(sourceId, sql1.toString(), VipSendAddress.class, closeConn, null);
+		if(address != null){
+			address.setFlag("1");
+		}
+		entityDao.updateEntity(sourceId, address, closeConn);//修改原先的默认地址点为非默认的
+		return entityDao.updateEntity(sourceId, vipSendAddress, closeConn);//提交当前会员修改的收货地址
+	}
+	
+	/**
+	 * 会员取消或设置为默认地址
+	 */
+	@Override
+	public boolean cancelDefaultAddress(String sourceId, boolean closeConn, String addressUUID, String vipUUID) {
+		if(addressUUID == null || "".equals(addressUUID) || vipUUID == null || "".equals(vipUUID)){
+			return false;
+		}
+		StringBuilder sql = new StringBuilder();
+		sql.append("select * from vip_send_address where addressUUID = '").append(addressUUID.replace("'", "")).append("'");
+		sql.append(" and vipUUID = '").append(vipUUID.replace("'", "")).append("'");
+		VipSendAddress address =  (VipSendAddress)sqldao.findEntityBySql(sourceId, sql.toString(), VipSendAddress.class, closeConn, null);
+		if(address == null){
+			return false;
+		}
+		if("2".equals(address.getFlag())){
+			address.setFlag("1");//取消默认地址
+		}else{
+			//设置默认地址
+			address.setFlag("2");
+		}
+		return entityDao.updateEntity(sourceId, address, closeConn);
+	}
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

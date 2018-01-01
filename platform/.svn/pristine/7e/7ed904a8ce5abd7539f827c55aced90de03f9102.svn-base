@@ -1,0 +1,76 @@
+package com.sctgz.HkdApp.action;
+
+import java.util.Map;
+
+import spark.Request;
+import spark.Response;
+import spark.Route;
+import spark.Spark;
+import spark.annotation.Auto;
+import spark.servlet.ISparkApplication;
+
+import com.sctgz.HkdApp.manage.AlipayMng;
+import com.sctgz.platform.entity.VipInfo;
+import com.sctgz.util.CacheUtil;
+/**
+ * 第三方支付pc端接口
+ * @author chengyz
+ *
+ */
+public class AlipayAction implements ISparkApplication {
+	@Auto(name = AlipayMng.class)
+	private AlipayMng alipayMng;
+	@Override
+	public void run() {
+		/**
+		 * 通过商户订单号生成订单请求字符串(以表单HTML形式构造)
+		 */
+		Spark.post(new Route("/front/pay/alipay", true, "jdbcwrite") {
+			
+			@Override
+			public Object handle(Request request, Response response) throws Exception {
+				String token = request.raw().getParameter("token");
+				VipInfo vipinfo = null;
+				if(token!=null && !"".equals(token)){
+					Map map = (Map)CacheUtil.getInstance().getTokenObject(token);
+					if(map!=null){
+						vipinfo=(VipInfo)map.get("vipinfo");
+					}
+				}
+				return alipayMng.alipayapiActionM("jdbcwrite", false, vipinfo, request.raw(), response.raw());
+			}
+		});
+		/**
+		 * 支付宝POST请求反馈信息地址
+		 */
+		Spark.post(new Route("/front/alipay/notifyURL", true, "jdbcwrite") {		
+			@Override
+			public Object handle(Request request, Response response) throws Exception {
+				return alipayMng.notifyURL("jdbcwrite", false, request.raw(), response.raw());
+			}
+		});
+		/**
+		 * 支付宝get请求反馈信息地址
+		 */
+		Spark.get(new Route("/front/alipay/returnURL", true, "jdbcwrite") {			
+			@Override
+			public Object handle(Request request, Response response) throws Exception {
+				if(alipayMng.returnURL("jdbcwrite", false, request.raw(), response.raw())){
+					//验证成功
+					response.redirect(request.raw().getContextPath() + "/HkdAppAdmin/pay/index.jsp");
+					return null;
+				}else{
+					response.redirect(request.raw().getContextPath() + "/HkdAppAdmin/pay/index.jsp");
+					return null;
+				}
+			}
+		});
+		Spark.post(new Route("/front/alipay/transfer", true, "jdbcwrite") {
+			@Override
+			public Object handle(Request request, Response response) throws Exception {
+				System.out.println("hello");
+				return alipayMng.getTradeStatus();
+			}
+		});
+	}
+}

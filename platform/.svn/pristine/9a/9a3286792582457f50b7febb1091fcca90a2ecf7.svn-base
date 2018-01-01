@@ -1,0 +1,166 @@
+package com.sctgz.util;
+
+import java.io.File;
+import java.io.UnsupportedEncodingException;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+import javax.servlet.http.HttpServletRequest;
+import org.apache.commons.fileupload.FileItem;
+import org.apache.commons.fileupload.FileUploadException;
+import org.apache.commons.fileupload.disk.DiskFileItemFactory;
+import org.apache.commons.fileupload.servlet.ServletFileUpload;
+
+/**
+ * HttpServletRequest上传文件工具类
+ * 
+ * @author hshzh
+ * 
+ */
+public class UpFileUtil {
+	/**
+	 * HttpServletRequest提交的文件保存到指定的目录,返回保存的文件全路径， 如果有多个文件则用","分开
+	 * 
+	 * @param request
+	 * @param filePath
+	 * @return
+	 */
+	public String saveHttpUpFile(HttpServletRequest request, String filePath) {
+		if (request == null) {
+			return null;
+		}
+		File dirsFile = new File(filePath);
+		if (!dirsFile.exists()) {
+			dirsFile.mkdirs();
+		}
+		DiskFileItemFactory fac = new DiskFileItemFactory();
+		ServletFileUpload upload = new ServletFileUpload(fac);
+		upload.setHeaderEncoding("utf-8");
+		List fileList = null;
+		try {
+			fileList = upload.parseRequest(request);//读取请求中的所有表单项
+		} catch (FileUploadException ex) {
+			ex.printStackTrace();
+		}
+		Iterator<FileItem> it = fileList.iterator();
+		String actualName = "";
+		String dbName = "";
+		String extName = "";
+		String fileNamePathS = "";
+		while (it.hasNext()) {
+			FileItem item = it.next();
+			if (!item.isFormField()) {// 判断是普通表单(true),文件表单(false)
+				actualName = item.getName();// 取文件名
+				long size = item.getSize();// 取文件大小
+				String type = item.getContentType();// 取文件类型
+				if (actualName == null || actualName.trim().equals("")) {
+					continue;
+				}
+				// 扩展名格式：
+				if (actualName.lastIndexOf(".") >= 0) {
+					extName = actualName.substring(actualName.lastIndexOf("."));
+				}
+				File file = null;
+				do {
+					// 生成文件名：
+					dbName = UUID.randomUUID().toString();
+					file = new File(filePath + dbName + extName);
+					// 多个文件用","分隔
+					if (fileNamePathS.equals("")) {
+						fileNamePathS = filePath+dbName + extName;
+					} else {
+						fileNamePathS += ","+filePath + dbName + extName;
+					}
+				} while (file.exists());
+				File saveFile = new File(filePath + dbName + extName);
+				try {
+					item.write(saveFile);// 将表单文件保存到指定的路径中
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			}
+		}
+		return fileNamePathS;
+	}
+	
+	/**
+	 * 重载
+	 * HttpServletRequest提交的文件保存到指定的目录,返回保存的文件全路径， 如果有多个文件则用","分开
+	 * 同时将提交的普通字段保存到map参数中
+	 * @param request
+	 * @param filePath
+	 * @param map 所有字段和值保存在map中，包括文件表单（文件表单的name值将作为key）
+	 * @return 上传的文件名
+	 */
+	public String saveHttpUpFile(HttpServletRequest request, String filePath,Map map) {
+		if (request == null) {
+			return null;
+		}
+		String relativePath = (String)map.get("relativePath");//相对路径
+		File dirsFile = new File(filePath);
+		if (!dirsFile.exists()) {
+			dirsFile.mkdirs();
+		}
+		DiskFileItemFactory fac = new DiskFileItemFactory();
+		ServletFileUpload upload = new ServletFileUpload(fac);
+		upload.setHeaderEncoding("utf-8");
+		List fileList = null;
+		try {
+			fileList = upload.parseRequest(request);//读取请求中的所有表单项
+		} catch (FileUploadException ex) {
+			ex.printStackTrace();
+		}
+		Iterator<FileItem> it = fileList.iterator();
+		String actualName = "";
+		String dbName = "";
+		String extName = "";
+		String fileNamePathS = "";
+		while (it.hasNext()) {
+			FileItem item = it.next();
+			if (!item.isFormField()) {// 判断是普通表单(true),文件表单(false)
+				actualName = item.getName();// 取文件名
+				long size = item.getSize();// 取文件大小
+				String type = item.getContentType();// 取文件类型
+				if (actualName == null || actualName.trim().equals("")) {
+					continue;
+				}
+				// 扩展名格式：
+				if (actualName.lastIndexOf(".") >= 0) {
+					extName = actualName.substring(actualName.lastIndexOf("."));
+				}
+				File file = null;
+				do {
+					// 生成文件名：
+					dbName = UUID.randomUUID().toString();
+					file = new File(filePath + dbName + extName);
+					// 多个文件用","分隔
+					if (fileNamePathS.equals("")) {
+						fileNamePathS = filePath+dbName + extName;
+					} else {
+						fileNamePathS += ","+filePath + dbName + extName;
+					}
+				} while (file.exists());
+				File saveFile = new File(filePath + dbName + extName);
+				try {
+					item.write(saveFile);// 将表单文件保存到指定的路径中
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+				map.put(item.getFieldName(), relativePath + dbName + extName);
+			}else{
+				String fieldName = item.getFieldName();//获取字段名
+				String fieldValue = null;
+				try {
+					fieldValue = item.getString("UTF-8");//这里不能读取整型字段？
+					map.put(fieldName, fieldValue);
+				} catch (UnsupportedEncodingException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+		}
+		return fileNamePathS;
+	}
+}

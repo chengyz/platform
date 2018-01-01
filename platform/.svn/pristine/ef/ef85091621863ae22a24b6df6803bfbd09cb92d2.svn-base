@@ -1,0 +1,278 @@
+package com.sctgz.platform.manage;
+
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import spark.annotation.Auto;
+
+import com.sctgz.platform.entity.AppInfo;
+import com.sctgz.platform.service.AppInfoService;
+import com.sctgz.platform.service.impl.AppInfoServiceImpl;
+import com.sctgz.util.CacheUtil;
+import com.sctgz.util.DateUtil;
+import com.sctgz.util.JsonUtil;
+import com.sctgz.util.ReadProperties;
+import com.sctgz.util.ReqToEntityUtil;
+import com.sctgz.util.Uploader;
+
+import dbengine.util.Page;
+/**
+ * app版本信息的管理
+ * @author chengyz
+ *
+ */
+public class AppInfoMng {
+	@Auto(name=AppInfoServiceImpl.class)
+	private AppInfoService appInfoService;
+	/**
+	 * 保存或修改app版本信息
+	 * @param sourceId
+	 * @param closeConn
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	public String saveOrUpAppInfo(String sourceId,boolean closeConn,HttpServletRequest request,HttpServletResponse response){
+		AppInfo appInfo = (AppInfo)ReqToEntityUtil.reqToEntity(request, AppInfo.class);
+		Map<String,String> map = new HashMap<String,String>();
+		if(appInfo == null){
+			map.put("status", "-4");
+			map.put("msg", "未获取到信息");
+			return JsonUtil.ObjToJson(map);
+		}
+		appInfo.setUpdateTime(DateUtil.formatDate(new Date(),"yyyy-MM-dd HH:mm:ss"));
+		if(appInfo.getAppUUID() == null || "".equals(appInfo.getAppUUID())){
+			appInfo.setAppUUID(UUID.randomUUID().toString());
+		}
+		String returnValue = appInfoService.saveOrUpAppInfo(sourceId, closeConn,appInfo);
+		if("1".equals(returnValue)){
+			Map appMap = new HashMap();
+	    	appMap.put("appUUID", appInfo.getAppUUID());
+	    	appMap.put("appType", appInfo.getAppType());
+	    	appMap.put("appName", appInfo.getAppName());
+	    	appMap.put("fileName", appInfo.getFileName());
+	    	appMap.put("appVersion", appInfo.getAppVersion());
+	    	appMap.put("directDownloadAddress", appInfo.getDirectDownloadAddress());
+	    	appMap.put("iosAuditStatus", appInfo.getIosAuditStatus());
+	    	appMap.put("iosAuditVersion", appInfo.getIosAuditVersion());
+	    	appMap.put("updateLog", appInfo.getUpdateLog());
+	    	appMap.put("outsideDownloadAddress", appInfo.getOutsideDownloadAddress());
+	    	List<Map>  appList;
+	    	if("ppinfo".equals(appInfo.getAppName())){
+	    		appList = (List<Map>)CacheUtil.getInstance().getBaseCache().get("ppinfosCache");
+	    		if(appList==null){
+		        	appList = new ArrayList<Map>();
+		        	appList.add(appMap);
+		        	CacheUtil.getInstance().getBaseCache().put("ppinfosCache", appList);
+		        }else{
+		        	appList.add(appMap);
+		        	CacheUtil.getInstance().getBaseCache().put("ppinfosCache", appList);
+		        	for(Map maps : appList){
+		        		if(appInfo.getAppType().equals(maps.get("appType"))){
+		        			if(!maps.get("appUUID").equals(appInfo.getAppUUID())){
+		        				appList.remove(maps);
+		        			}
+		        			CacheUtil.getInstance().getBaseCache().put("ppinfosCache", appList);
+		        		}
+		        	}
+		        }
+	    	}
+	    	if("paotui".equals(appInfo.getAppName())){
+	    		appList = (List<Map>)CacheUtil.getInstance().getBaseCache().get("paotuisCache");
+	    		if(appList==null){
+		        	appList = new ArrayList<Map>();
+		        	appList.add(appMap);
+		        	System.out.println("移除前："+appList);
+		        	CacheUtil.getInstance().getBaseCache().put("paotuisCache", appList);
+		        }else{
+		        	appList.add(appMap);
+		        	CacheUtil.getInstance().getBaseCache().put("paotuisCache", appList);
+		        	for(Map maps : appList){
+		        		if(appInfo.getAppType().equals(maps.get("appType"))){
+		        			if(!maps.get("appUUID").equals(appInfo.getAppUUID())){
+		        				appList.remove(maps);
+		        				System.out.println("移除后："+appList);
+		        			}
+		        			CacheUtil.getInstance().getBaseCache().put("paotuisCache", appList);
+		        		}
+		        	}
+		        }
+	    	}
+			map.put("status", "1");
+			map.put("msg", "保存成功");
+			return JsonUtil.ObjToJson(map);
+		}else if("-2".equals(returnValue)){
+			map.put("status", "-2");
+			map.put("msg", "保存失败");
+			return JsonUtil.ObjToJson(map);
+		}else if("2".equals(returnValue)){
+			map.put("status", "2");
+			map.put("msg", "修改成功");
+			return JsonUtil.ObjToJson(map);
+		}else if("-1".equals(returnValue)){
+			map.put("status", "-1");
+			map.put("msg", "保存失败");
+			return JsonUtil.ObjToJson(map);
+		}else{
+			map.put("status", "-3");
+			map.put("msg", "保存或修改失败");
+			return JsonUtil.ObjToJson(map);
+		}
+	}
+	/**
+	 * 查询app列表
+	 * @param sourceId
+	 * @param closeConn
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	public String findAppInfoList(String sourceId,boolean closeConn,HttpServletRequest request,HttpServletResponse response){
+		Page page = (Page)ReqToEntityUtil.reqToEntity(request, Page.class);
+		List<AppInfo> list = appInfoService.findAppInfoList(sourceId, closeConn, page);
+		if(list == null || list.size() < 1){
+			return "[]";
+		}
+		if(page == null){
+			return JsonUtil.ObjToJson(list);
+		}else{
+			return JsonUtil.ObjToJson(page);
+		}
+	}
+	/**
+	 * 查询app
+	 * @param sourceId
+	 * @param closeConn
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	public boolean findAppInfo(String sourceId,boolean closeConn,String appName,String appType){
+		if(appName == null || "".equals(appName) || appType == null || "".equals(appType)){
+			return false;
+		}
+		AppInfo appInfo = appInfoService.findAppInfo(sourceId, closeConn, appName,appType);
+		if(appInfo == null){
+			return false;
+		}
+		Map appMap = new HashMap();
+    	appMap.put("appUUID", appInfo.getAppUUID());
+    	appMap.put("appType", appInfo.getAppType());
+    	appMap.put("appName", appInfo.getAppName());
+    	appMap.put("fileName", appInfo.getFileName());
+    	appMap.put("appVersion", appInfo.getAppVersion());
+    	appMap.put("directDownloadAddress", appInfo.getDirectDownloadAddress());
+    	appMap.put("iosAuditStatus", appInfo.getIosAuditStatus());
+    	appMap.put("iosAuditVersion", appInfo.getIosAuditVersion());
+    	appMap.put("updateLog", appInfo.getUpdateLog());
+    	appMap.put("outsideDownloadAddress", appInfo.getOutsideDownloadAddress());
+        List<Map>  appList;
+        if("paotui".equals(appName)){
+        	appList = (List<Map>)CacheUtil.getInstance().getBaseCache().get("paotuisCache");
+        	if(appList==null){
+	        	appList = new ArrayList<Map>();
+	        	appList.add(appMap);
+	        	CacheUtil.getInstance().getBaseCache().put("paotuisCache", appList);
+        	}
+            return true;
+        }
+        if("ppinfo".equals(appName)){
+        	appList = (List<Map>)CacheUtil.getInstance().getBaseCache().get("ppinfosCache");
+        	if(appList==null){
+        		appList = new ArrayList<Map>();
+	        	appList.add(appMap);
+	            CacheUtil.getInstance().getBaseCache().put("ppinfosCache", appList);
+        	}
+            return true;
+        }
+        return false;
+	}
+	/**
+	 * 上传好快当APP
+	 * @param sourceId
+	 * @param closeConn
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	public String uploadApp(HttpServletRequest request,HttpServletResponse response) throws Exception{
+		String basePath = ReadProperties.getValue("appUploadPath");//得到config配置文件的主路径
+		String type = request.getParameter("type");//用于判断app类型和获取文件名
+		if(type.endsWith("1")){
+			basePath = basePath+"/android";
+		}
+		if(type.endsWith("2")){
+			basePath = basePath+"/ios";
+		}
+		String[] bytes = type.split("-");
+		Uploader up = new Uploader(request);
+		up.setSavePath(basePath);
+		String[] fileType = {".apk" , ".ipa"};
+		up.setAllowFiles(fileType);
+		up.setMaxSize(100000); //单位KB
+		if(bytes[0] != null && !"".equals(bytes[0])){
+			up.upload(bytes[0]);
+			String url = up.getUrl();//文件访问路径
+			return url;
+		}else{
+			return "";
+		}
+	}
+	/**
+	 * 删除好快当信息
+	 * @param sourceId
+	 * @param closeConn
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	public String deleteAppInfo(String sourceId,boolean closeConn,HttpServletRequest request,HttpServletResponse response){
+		String appUUID = request.getParameter("appUUID");
+		String appName = request.getParameter("appName");
+		Map<String,String> map = new HashMap<String,String>();
+		if(appUUID == null || "".equals(appUUID)){
+			map.put("status", "-1");
+			map.put("msg", "未获取到信息");
+			return JsonUtil.ObjToJson(map); 
+		}
+		List<Map>  appList;
+		if(appInfoService.deleteAppInf(sourceId, closeConn, appUUID)){
+			if("paotui".equals(appName)){
+	        	appList = (List<Map>)CacheUtil.getInstance().getBaseCache().get("paotuisCache");
+	        	if(appList != null){
+	        		for(Map maps : appList){
+	        			if(((String)maps.get("appUUID")).equals(appUUID)){
+	        				appList.remove(maps);
+	        			}
+	        		}
+	        		CacheUtil.getInstance().getBaseCache().put("paotuisCache", appList);
+	        	}
+	        }
+			if("ppinfo".equals(appName)){
+	        	appList = (List<Map>)CacheUtil.getInstance().getBaseCache().get("ppinfosCache");
+	        	if(appList != null){
+	        		for(Map maps : appList){
+	        			if(((String)maps.get("appUUID")).equals(appUUID)){
+	        				appList.remove(maps);
+	        			}
+	        		}
+	        		CacheUtil.getInstance().getBaseCache().put("ppinfosCache", appList);
+	        	}
+	        }
+			map.put("status", "1");
+			map.put("msg", "删除成功");
+			return JsonUtil.ObjToJson(map); 
+		}else{
+			map.put("status", "-1");
+			map.put("msg", "删除失败");
+			return JsonUtil.ObjToJson(map); 
+		}
+	}
+}

@@ -1,0 +1,107 @@
+package com.platform.manage;
+
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import spark.annotation.Auto;
+
+import com.mysql.jdbc.StringUtils;
+import com.platform.entity.RoleInfo;
+import com.platform.entity.UserInfo;
+import com.platform.service.IRoleService;
+import com.platform.service.impl.RoleServiceImpl;
+import com.util.DateUtil;
+import com.util.JsonUtil;
+import com.util.ReqToEntityUtil;
+import com.util.ReqToMapUtil;
+
+import dbengine.util.Page;
+
+
+public class RoleMng {
+
+	@Auto(name=RoleServiceImpl.class)
+	private IRoleService roleService;
+	
+	public String saveRole(String sourceId, boolean closeConn, HttpServletRequest request, HttpServletResponse response){
+		RoleInfo role = (RoleInfo) ReqToEntityUtil.reqToEntity(request, RoleInfo.class);
+		Map<String, String> map = new HashMap<String, String>();
+		if (role==null){
+			map.put("status", "0");
+			map.put("msg", "未输入任何信息！");
+			return JsonUtil.ObjToJson(map);
+		}
+		if (role.getId()==null){
+			role.setRoleUUID(UUID.randomUUID().toString());
+			role.setCreateTime(DateUtil.formatDateTime(new Date()));
+			role.setCreateUserName("");
+			role.setCreateUserUUID("");
+		}
+		if (roleService.saveOrUpRole(sourceId, closeConn, role)){
+			map.put("status", "1");
+			map.put("msg", "保存成功！");
+			return JsonUtil.ObjToJson(map);
+		}else{
+			map.put("status", "0");
+			map.put("msg", "保存失败！");
+			return JsonUtil.ObjToJson(map);
+		}
+		
+	}
+	
+	public String delRole(String sourceId, boolean closeConn, HttpServletRequest request, HttpServletResponse response){
+			String roleUUID = request.getParameter("roleUUID");
+			Map<String, String> map = new HashMap<String, String>();
+			if (!StringUtils.isNullOrEmpty(roleUUID)){
+				if (roleService.deleteRole(sourceId, closeConn, roleUUID)){
+					map.put("status", "1");
+					map.put("msg", "成功");
+					return JsonUtil.ObjToJson(map);
+				}else{
+					map.put("status", "0");
+					map.put("msg", "删除失败");
+					return JsonUtil.ObjToJson(map);
+				}
+			}else{
+				map.put("status", "0");
+				map.put("msg", "删除失败，未获取到UUID");
+				return JsonUtil.ObjToJson(map);
+			}
+			
+		}
+	
+	public String findRole(String sourceId, boolean closeConn, HttpServletRequest request, HttpServletResponse response){
+		String roleUUID = request.getParameter("roleUUID");
+		if (!StringUtils.isNullOrEmpty(roleUUID)){
+			RoleInfo role = roleService.findRole(sourceId, closeConn, roleUUID);
+			if (role!=null){
+				return JsonUtil.ObjToJson(role);
+			}else{
+				return JsonUtil.ObjToJson("[]");
+			}
+		}else{
+			return JsonUtil.ObjToJson("[]");
+		}
+		
+	}
+	
+	public String findRoleList(String sourceId, boolean closeConn, HttpServletRequest request, HttpServletResponse response, UserInfo user){
+		Page pageObj = (Page) ReqToEntityUtil.reqToEntity(request, Page.class);
+		Map<String, String> findMap = ReqToMapUtil.reqToMap(request, RoleInfo.class);
+		List<RoleInfo> list = roleService.findRoleList(sourceId, closeConn, pageObj, findMap);
+		if (pageObj!=null){
+			return JsonUtil.ObjToJson(pageObj);
+		}else if (list!=null){
+			return JsonUtil.ObjToJson(list);
+		}else{
+			return JsonUtil.ObjToJson("[]");
+		}
+		
+	}
+}

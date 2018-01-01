@@ -1,0 +1,71 @@
+package com.sctgz.platform.manage;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import spark.annotation.Auto;
+
+import com.mysql.jdbc.StringUtils;
+import com.sctgz.platform.entity.MenuVip;
+import com.sctgz.platform.service.IMenuVipService;
+import com.sctgz.platform.service.impl.MenuVipServiceImpl;
+import com.sctgz.util.JsonUtil;
+
+public class MenuVipMng {
+	@Auto(name=MenuVipServiceImpl.class)
+	private IMenuVipService vipMenuService;
+	
+	public String addPermissionForVip(String sourceId, boolean closeConn, HttpServletRequest request, HttpServletResponse response){
+		String unitUUID = request.getParameter("unitUUID");
+		String vipUUID = request.getParameter("vipUUID");
+		String menuUUIDS = request.getParameter("menuUUIDS");//选择的菜单参数
+		Map<String, String> map = new HashMap<String, String>();
+		if (!StringUtils.isNullOrEmpty(vipUUID)&&!StringUtils.isNullOrEmpty(menuUUIDS)){
+			vipMenuService.deleteMenuVip(sourceId, closeConn, null, vipUUID);
+			String[] menusList = menuUUIDS.split(",");
+			List<MenuVip> menuList = new ArrayList<MenuVip>();
+			for (String menuUUID : menusList) {
+				MenuVip menuVip = new MenuVip();
+				menuVip.setVipUUID(vipUUID);
+				menuVip.setMenuUUID(menuUUID);
+				menuVip.setUnitUUID(unitUUID);
+				menuList.add(menuVip);
+			}
+			if (vipMenuService.saveMenuVip(sourceId, closeConn, menuList)){
+				map.put("status", "1");
+				map.put("msg", "权限分配成功");
+				return JsonUtil.ObjToJson(map);
+			}else{
+				map.put("status", "0");
+				map.put("msg", "权限分配失败");
+				return JsonUtil.ObjToJson(map);
+			}
+		}else{
+			map.put("status", "0");
+			map.put("msg", "权限分配失败");
+			return JsonUtil.ObjToJson(map);
+		}
+	}
+	
+	public String findAllMenuItemToAddPermission(String sourceId, boolean closeConn, HttpServletRequest request, HttpServletResponse response){
+		String unitUUID = request.getParameter("unitUUID");
+		String vipUUID = request.getParameter("vipUUID");
+		if (!StringUtils.isNullOrEmpty(unitUUID)&&!StringUtils.isNullOrEmpty(vipUUID)){
+			@SuppressWarnings("rawtypes")
+			List<Map> listMap = vipMenuService.findAllMenuItemForVip(sourceId, closeConn, vipUUID, unitUUID);
+			if (listMap!=null){
+				return JsonUtil.ObjToJson(listMap);
+			}else{
+				return JsonUtil.ObjToJson("[]");
+			}
+		}else{
+			return JsonUtil.ObjToJson("[]");
+		}
+		
+	}
+}

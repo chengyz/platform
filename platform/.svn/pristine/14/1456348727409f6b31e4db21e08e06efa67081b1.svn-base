@@ -1,0 +1,301 @@
+<%@page import="com.sctgz.util.ReadProperties"%>
+<%@ page language="java" import="java.util.*" pageEncoding="UTF-8"%>
+<%
+String path = request.getContextPath();
+String userName=request.getSession().getAttribute("username")+"";
+String basePath = request.getScheme()+"://"+request.getServerName()+":"+request.getServerPort()+path+"/";
+%>
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <base href="<%=basePath%>">
+    
+    <title>添加app信息</title>
+	<meta http-equiv="pragma" content="no-cache">
+	<meta http-equiv="cache-control" content="no-cache">
+	<meta http-equiv="expires" content="0">    
+		
+	<link rel="stylesheet" href="static/css/pintuer.css">
+	<link rel="stylesheet" href="static/css/admin.css">
+	
+	<link type="image/x-icon" href="static/images/logo.png" rel="shortcut icon" />
+	<link href="static/images/favicon.ico" rel="bookmark icon" />
+
+	<script src="static/js/jquery.js"></script>
+	<script src="static/js/pintuer.js"></script>
+	<script src="static/js/respond.js"></script>
+	<script src="static/js/admin.js"></script>
+	<script src="static/js/layer.js"></script>
+	<script >
+		window.UEDITOR_HOME_URL="<%=basePath %>"+"static/js/ueditor/";
+		var ueditor_home_url=window.UEDITOR_HOME_URL;//方便配置 图片和附件 上传的位置，以便传递参数
+		
+		var folder_url = '<%=ReadProperties.getValue("appUploadPath")%>';//文件上传路径
+	</script>
+	<script src="static/js/ueditor/editor_config.js"></script>
+	<script src="static/js/ueditor/editor_all.js"></script>
+	
+	<script>
+		function getFromSerialize(){
+			var userName = $('#userName').val();
+			if(userName == null || userName == ""){
+				var userName = "${sessionScope.userinfo.userName}";
+				$('#userName').val(userName);
+				var userUUID = "${sessionScope.userinfo.userUUID}";
+				$('#userUUID').val(userUUID);
+			}
+			var appVersion = $('#appVersion').val();
+			if(appVersion == null || appVersion == ""){
+				return false;
+			}
+			$('#updateLog').val(editor.getContent());
+			return $('#addDataForm').serialize();
+		}
+		function addData(){
+			editor.render("updateLog");
+			$('#updateLog').val(editor.getContent());
+		}
+		
+		function initData(data){
+			$('#id').val(data.id);
+			$('#appUUID').val(data.appUUID);
+			$('#appName').val(data.appName);
+			$('#appVersion').val(data.appVersion);
+			$('#outsideDownloadAddress').val(data.outsideDownloadAddress);
+			$('#directDownloadAddress').val(data.directDownloadAddress);
+			$('#fileName').val(data.fileName);
+			$('#appType').val(data.appType);
+			$('#iosAuditStatus').val(data.iosAuditStatus);
+			$('#iosAuditVersion').val(data.iosAuditVersion);
+			$('#userName').val(data.userName);
+			$('#userUUID').val(data.userUUID);
+			$('#updateLog').val(data.updateLog);
+			if(data.appVersion != null){
+				$('input[name=appVersion]').attr("readonly","readonly");//将input元素设置为readonly
+			}
+			if(data.iosAuditStatus == 1){
+				$('#iosAuditStatus1').val("审核通过");
+			}else{
+				$('#iosAuditStatus1').val("审核中");
+			}
+			for(var i = 0;i<$('#iosAuditStatus1').children().length;i++){
+				var v = $('#iosAuditStatus1').find('option').eq(i).val();
+				if(v == data.iosAuditStatus){
+					$('#iosAuditStatus1').find('option').eq(i).attr('selected','selected');	
+				}
+			}
+			for(var i = 0;i<$('#appName1').children().length;i++){
+				var v = $('#appName1').find('option').eq(i).val();
+				if(v == data.appName){
+					$('#appName1').find('option').eq(i).attr('selected','selected');	
+				}
+			}
+			if(data.appType == "android"){
+				$('#iosOption').hide();
+			}
+			if(data.appType == "ios"){
+				$('#iosOption').show();
+			}
+			editor.render("updateLog");
+		}
+		function choose(){
+			var appName=$("#appName1").find("option:selected").val();
+			if(appName == "paotui"){
+				$('#appName').val("paotui");
+			}
+			if(appName == "ppinfo"){
+				$('#appName').val("ppinfo");
+			}
+		}
+		function chooseStatus(){
+			var iosAuditStatus=$("#iosAuditStatus1").find("option:selected").val();
+			$('#iosAuditStatus').val(iosAuditStatus);
+		}
+		function chooseType(){
+			var appType=$("#appType").val();
+			if(appType == "android"){
+				$('input[name=outsideDownloadAddress]').attr("readonly","readonly");//将input元素设置为readonly
+				$('#iosOption').hide();
+			}
+			if(appType == "ios"){
+				$('input[name=outsideDownloadAddress]').removeAttr("readonly");//去除input元素的readonly属性
+				$('#iosOption').show();
+			}
+			$('#appType').val(appType);
+		}
+		function fileChange(dom){
+			var type = $('#appType').val();
+			var path  = dom.value;
+			var suffix =  path.substring(path.lastIndexOf(".")).toLowerCase();
+			var fileName =  path.substring(path.lastIndexOf("\\")).toLowerCase();
+			if(type == "android"){
+				if(suffix ==".apk"){
+					var version = $('#appVersion').val();
+					var name = $('#appName').val();
+					var names = name +'_'+ version+'.apk';
+					$('#fileName').val(names);
+					isOk = true;
+					type = names+'-'+'1';
+					if(callbackImageFunc != null){
+						$('#uploadRate').val("上传中");
+						callbackImageFunc.call(this,type);
+					}
+				}else{
+					isOk = false;
+					layer.msg('只能上传.apk的文件', {icon: 2});
+				}
+			}
+			if(type == "ios"){
+				if(suffix ==".ipa"){
+					var version = $('#appVersion').val();
+					var name = $('#appName').val();
+					var names = name + version+'.api';
+					$('#fileName').val(names);
+					isOk = true;
+					type = names+'_'+'2';
+					if(callbackImageFunc != null){
+						$('#uploadRate').val("上传中");
+						callbackImageFunc.call(this,type);
+					}
+				}else{
+					isOk = false;
+					layer.msg('只能上传.ipa的文件', {icon: 2});
+				}
+			}
+			
+	}
+	
+	</script>
+  </head> 
+  	<body>
+		<div id="myDialog" >
+			<div class="dialog-body margin-little">
+				<form id="addDataForm"  class="form-inline" style="width:100%;" method="post" enctype="multipart/form-data">
+					<input type="hidden" id="id" name="id">
+					<input type="hidden" id="appUUID" name="appUUID">
+					<input type="hidden" id="userUUID" name="userUUID">
+					<input type="hidden" id="updateTime" name="updateTime">
+					<input type="hidden" id="userName" name="userName"/>
+					<table class="table table-striped table-bordered table-condensed" width="100%">
+						<tr>
+							<td width="18%">
+								app类型：
+							</td>
+							<td>
+								<div class="field">
+								<select id="appType" name="appType" style="width:99%;" class="input" type="text" onchange="chooseType()">
+									<option value="">--选择app类型--</option>
+									<option value="android">android</option>
+									<option value="ios">ios</option>
+								</select>
+							</td>
+							<td width="18%">
+								app版本号：
+							</td>
+							<td>
+								<input type="text" class="input" id="appVersion" name="appVersion" placeholder="请输入app版本号" style="width:97%;"/>
+							</td>
+						</tr>
+						<tr>
+							<td width="18%">
+								app名称：
+							</td>
+							<td>
+								<input type="hidden" class="input" id="appName" name="appName"  style="width:97%;"/>
+								<select id="appName1" style="width:99%;" class="input" type="text" onchange="choose()">
+									<option value="">--选择APP名称--</option>
+									<option value="paotui">好快当</option>
+									<option value="ppinfo">商家信息采集</option>
+								</select>
+							</td>
+							<td width="18%">
+								文件名：
+							</td>
+							<td>
+								<input type="text" class="input" id="fileName" name="fileName" placeholder="" style="width:99%;" readonly/>
+							</td>
+						</tr>
+						<tr id="iosOption">
+							<td width="18%">
+								ios的审核状态：
+							</td>
+							<td>
+								<div class="field">
+					   	 		<input id="iosAuditStatus" name="iosAuditStatus" value="" type="hidden">
+								<select id="iosAuditStatus1" style="width:99%;" class="input" type="text" onchange="chooseStatus()">
+									<option value="">--选择ios审核状态--</option>
+									<option value="1">审核通过</option>
+									<option value="2">审核中</option>
+								</select>
+							</div>
+							</td>
+							<td width="18%">
+								ios正在审核的版本：
+							</td>
+							<td>
+								<input type="text" class="input" id="iosAuditVersion" name="iosAuditVersion" placeholder="" style="width:97%;"/>
+							</td>
+						</tr>
+						<tr>
+							<td width="18%">
+								上传app：
+							</td>
+							<td>
+								<div style="display:inline">
+							   		<a class="button input-file" href="javascript:void(0);" >+ 浏览app文件
+						   				<input id="filessPath" name="filessPath" onchange="fileChange(this);" type="file"/>
+						   			</a>
+								</div>
+							</td>
+							<td width="18%">
+								上传进度：
+							</td>
+							<td>
+								<input type="text" class="input" id="uploadRate"  style="width:97%;"/>
+							</td>
+						</tr>
+						<tr>
+							<td>
+								外网的app下载地址：
+							</td>
+							<td colspan="4">
+								<input type="text" class="input" id="outsideDownloadAddress" name="outsideDownloadAddress" placeholder="外网app下载地址" style="width:99%;"/>
+							</td>
+						</tr>
+						<tr>
+							<td>
+								直接下载的地址：
+							</td>
+							<td colspan="4">
+								<input type="text" class="input" id="directDownloadAddress" name="directDownloadAddress" placeholder="直接下载到本地的地址" style="width:99%;" readonly/>
+							</td>
+						</tr>
+						<tr>
+							<td>
+								版本更新日志：
+							</td>
+							<td colspan="4">
+								<textarea  id="updateLog"  name="updateLog" style="width:100%;"></textarea>
+								<script type="text/javascript">
+								     var editor = new UE.ui.Editor({
+											textarea:'updateLog',
+											fullscreen:false,
+											initialFrameWidth:'100%',
+											initialFrameHeight:200,
+											initialContent: "",
+											autoHeightEnabled:false,
+											toolbars:[['fullscreen', 'source', '|' ,'insertimage', 'preview','forecolor', 'backcolor', 'fontfamily', 'fontsize']]
+											/* ,serialize:{ blackList:{style:1, link:1,object:1, applet:1, input:1,meta:1, base:1, button:1, select:1, textarea:1, '#comment':1, 'map':1, 'area':1,"img":1,"script":1}  } */
+										});
+										//editor.render("content");
+								</script>
+							</td>
+						</tr>
+						
+					</table>
+				</form>
+			</div>
+		</div>	
+	</body>
+</html>

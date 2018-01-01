@@ -1,0 +1,78 @@
+package com.sctgz.HkdApp.action;
+
+import java.io.PrintWriter;
+
+import org.json.JSONObject;
+
+import spark.Request;
+import spark.Response;
+import spark.Route;
+import spark.Spark;
+import spark.annotation.Auto;
+import spark.servlet.ISparkApplication;
+
+import com.sctgz.HkdApp.manage.MessageMng;
+import com.tenpay.util.JsonUtil;
+
+public class MessageAction implements ISparkApplication {
+	@Auto(name=MessageMng.class)
+	private MessageMng msgMng;
+	@Override
+	public void run() {
+		Spark.get(new Route("/hkdapp/message/push",true,"jdbcread"){
+			@Override
+			public Object handle(Request request,Response response) throws Exception{
+				response.raw().setContentType("text/event-stream");	
+				response.raw().setCharacterEncoding("UTF-8");
+				response.raw().setHeader("Cache-Control", "no-cache");
+				//上次客户端中断连接的事件标志
+				String last = response.raw().getHeader("Last-Event-ID");
+				PrintWriter writer = response.raw().getWriter();
+				boolean isHold = true;
+				while(isHold){//hold连接，检测是否有消息
+					String message = msgMng.getMessage("jdbcread", false, request.raw(), response.raw());
+					int status = new JSONObject(message).getInt("status");
+					if(status > 0){
+						isHold = false;
+						//event:以\n结尾，其他以\n\n结尾
+						//事件标志
+						writer.write("id: "+ System.currentTimeMillis() + "\n\n"); 
+						writer.write("data: "+message+"\n\n");
+						//声明客户端在连接断开之后进行再次连接之前的等待时间 10秒
+						writer.write("retry : 10000\n\n");
+//						writer.flush();
+					}
+						
+					try {
+						Thread.sleep(100000);//每10秒检测一次
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+				}
+				writer.close();
+				
+				return "";
+			}
+		});
+		/**
+		 * 获取一条未处理消息
+		 */
+		Spark.post(new Route("/hkdapp/message/getMessage",false,"jdbcread"){
+
+			@Override
+			public Object handle(Request request, Response response) throws Exception {
+				return msgMng.getMessage("jdbcread", false, request.raw(), response.raw());
+			}		
+		});
+		
+		/**
+		 * 删除一条消息
+		 */
+		Spark.post(new Route("/hkdapp/message/delMessage",false,"jdbcread"){
+			@Override
+			public Object handle(Request request, Response response) throws Exception {
+				return msgMng.delMessage("jdbcread", false, request.raw(), response.raw());
+			}		
+		});
+	}
+}

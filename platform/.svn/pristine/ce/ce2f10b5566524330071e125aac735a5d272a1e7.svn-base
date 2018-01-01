@@ -1,0 +1,387 @@
+package com.sctgz.HkdApp.entity;
+
+import java.math.BigDecimal;
+
+import dbengine.annotation.Table;
+import dbengine.annotation.TableField;
+
+/**
+ * 帮我买/帮我送/帮我取 生成的订单信息
+ * @author chengyz
+ *
+ */
+@Table(tableName="order_info")
+public class OrderInfo {
+	
+	@TableField(isPKey=true,isNotNull=true,isAutoIncrement=true,comment="主键Id,自动增长")
+	private Long id;
+	
+	@TableField(fieldSize=36,isNotNull=true,comment="订单uuid,全局唯一标识")
+	private String orderUUID;
+	
+	@TableField(fieldSize=36,isNotNull=true,comment="订单的创建者（会员）uuid,全局唯一标识")
+	private String vipUUID;
+	
+	@TableField(fieldSize=11,isNotNull=true,comment="会员手机号,全局唯一标识")
+	private String vipPhoneNumber;
+	
+	@TableField(fieldSize=36,isNotNull=true,comment="订单编号,会员可见的")
+	private String orderNumber;
+	
+	@TableField(fieldSize=500,comment="购买选项即是购买内容")
+	private String buyOption;
+	
+	@TableField(fieldSize=20,comment="购买类型")
+	private String buyType;
+	
+	@TableField(fieldSize=13,comment="出发地联系人手机号码：发货人、取货人手机号码")
+	private String beginPhoneNumber;
+	
+	@TableField(fieldSize=100,isNotNull=true,comment="购买地址、发货地址、取货地址都是出发地")
+	private String beginAddress;
+	
+	@TableField(fieldSize=100,isNotNull=true,comment="出发地址经度")
+	private String beginLongitude;
+	
+	@TableField(fieldSize=100,isNotNull=true,comment="出发地址玮度")
+	private String beginLatitude;
+	
+	@TableField(fieldSize=13,isNotNull=true,comment="收货人联系电话")
+	private String phoneNumber;
+	
+	@TableField(fieldSize=100,isNotNull=true,comment="收货地址")
+	private String sendAddress;
+	
+	@TableField(fieldSize=100,isNotNull=true,comment="收货地址经度")
+	private String sendLongitude;
+	
+	@TableField(fieldSize=100,isNotNull=true,comment="收货地址玮度")
+	private String sendLatitude;
+	
+	@TableField(fieldSize=100,comment="音频文件")
+	private String audioFile;
+	
+	@TableField(fieldSize=50,comment="物品类型")
+	private String itemType;
+	
+	@TableField(fieldSize=100,isNotNull=true,comment="送达时间")
+	private String endTime;
+	
+	@TableField(fieldSize=50,comment="商品价格")
+	private String productPrice;
+	
+	@TableField(fieldSize=10,comment="不知道价格")
+	private String unknowPrice;
+		
+	@TableField(fieldSize=10,isNotNull=true,comment="订单状态:（1为待支付、2为已失效（会员取消/支付超时）、3为待接单、4为配送中、5为接单人确认订单、6订单完成、7已评价")
+	private String status;
+	
+	@TableField(fieldSize=20,isNotNull=true,comment="订单创建的时间(后台自动生成)")
+	private String createTime;
+	
+	@TableField(fieldSize=10,isNotNull=true,comment="订单价格即是跑路费")
+	private BigDecimal orderPrice;
+	
+	@TableField(fieldSize=1,comment="订单类型：帮我买为1，帮我送为2，帮我取为3")
+	private String orderType;
+	
+	@TableField(fieldSize=20,comment="支付方式")
+	private String payMode;
+	
+	@TableField(fieldSize=20,comment="支付时间")
+	private String payTime;
+	
+	@TableField(fieldSize=40,comment="外部支付编号")
+	private String outsidePayNo;
+
+	@TableField(fieldSize=40,comment="外部订单号")
+	private String outsideOrderNo;
+	
+	@TableField(fieldSize=20,comment="支付截止时间")
+	private String cutOffTime;
+	
+	@TableField(fieldSize=200,comment="备注")
+	private String remark;
+	
+	@TableField(fieldSize=20,comment="订单最近更新的时间")
+	private String updateTime;
+	
+	@TableField(fieldSize=20,comment="出发地址的门牌号")
+	private String beginHouseNumber;
+	
+	@TableField(fieldSize=20,comment="收货地址的门牌号")
+	private String sendHouseNumber;
+	
+	
+	public String getBeginHouseNumber() {
+		return beginHouseNumber;
+	}
+
+	public void setBeginHouseNumber(String beginHouseNumber) {
+		this.beginHouseNumber = beginHouseNumber;
+	}
+
+	public String getSendHouseNumber() {
+		return sendHouseNumber;
+	}
+
+	public void setSendHouseNumber(String sendHouseNumber) {
+		this.sendHouseNumber = sendHouseNumber;
+	}
+
+	public String getRemark() {
+		return remark;
+	}
+
+	public void setRemark(String remark) {
+		this.remark = remark;
+	}
+
+	public String getCutOffTime() {
+		return cutOffTime;
+	}
+
+	public void setCutOffTime(String cutOffTime) {
+		this.cutOffTime = cutOffTime;
+	}
+
+	public String getOrderType() {
+		return orderType;
+	}
+
+	public void setOrderType(String orderType) {
+		this.orderType = orderType;
+	}
+
+	public String getPayMode() {
+		return payMode;
+	}
+
+
+	public String getUpdateTime() {
+		return updateTime;
+	}
+
+	public void setUpdateTime(String updateTime) {
+		this.updateTime = updateTime;
+	}
+
+	public void setPayMode(String payMode) {
+		this.payMode = payMode;
+	}
+
+	public String getPayTime() {
+		return payTime;
+	}
+
+	public void setPayTime(String payTime) {
+		this.payTime = payTime;
+	}
+
+	public String getOutsidePayNo() {
+		return outsidePayNo;
+	}
+
+	public void setOutsidePayNo(String outsidePayNo) {
+		this.outsidePayNo = outsidePayNo;
+	}
+
+	public String getOutsideOrderNo() {
+		return outsideOrderNo;
+	}
+
+	public void setOutsideOrderNo(String outsideOrderNo) {
+		this.outsideOrderNo = outsideOrderNo;
+	}
+
+
+	public BigDecimal getOrderPrice() {
+		return orderPrice;
+	}
+
+	public void setOrderPrice(BigDecimal orderPrice) {
+		this.orderPrice = orderPrice;
+	}
+
+	public String getBuyType() {
+		return buyType;
+	}
+
+	public void setBuyType(String buyType) {
+		this.buyType = buyType;
+	}
+
+	public String getUnknowPrice() {
+		return unknowPrice;
+	}
+
+	public void setUnknowPrice(String unknowPrice) {
+		this.unknowPrice = unknowPrice;
+	}
+
+
+	public String getSendLongitude() {
+		return sendLongitude;
+	}
+
+	public void setSendLongitude(String sendLongitude) {
+		this.sendLongitude = sendLongitude;
+	}
+
+	public String getSendLatitude() {
+		return sendLatitude;
+	}
+
+	public void setSendLatitude(String sendLatitude) {
+		this.sendLatitude = sendLatitude;
+	}
+
+	public String getVipPhoneNumber() {
+		return vipPhoneNumber;
+	}
+
+	public void setVipPhoneNumber(String vipPhoneNumber) {
+		this.vipPhoneNumber = vipPhoneNumber;
+	}
+	public String getOrderNumber() {
+		return orderNumber;
+	}
+
+	public void setOrderNumber(String orderNumber) {
+		this.orderNumber = orderNumber;
+	}
+
+	public String getCreateTime() {
+		return createTime;
+	}
+
+	public void setCreateTime(String createTime) {
+		this.createTime = createTime;
+	}
+
+	public Long getId() {
+		return id;
+	}
+
+	public void setId(Long id) {
+		this.id = id;
+	}
+
+	public String getOrderUUID() {
+		return orderUUID;
+	}
+
+	public void setOrderUUID(String orderUUID) {
+		this.orderUUID = orderUUID;
+	}
+
+	public String getBuyOption() {
+		return buyOption;
+	}
+
+	public void setBuyOption(String buyOption) {
+		this.buyOption = buyOption;
+	}
+
+	public String getSendAddress() {
+		return sendAddress;
+	}
+
+	public void setSendAddress(String sendAddress) {
+		this.sendAddress = sendAddress;
+	}
+
+	public String getPhoneNumber() {
+		return phoneNumber;
+	}
+
+	public void setPhoneNumber(String phoneNumber) {
+		this.phoneNumber = phoneNumber;
+	}
+
+	public String getProductPrice() {
+		return productPrice;
+	}
+
+	public void setProductPrice(String productPrice) {
+		this.productPrice = productPrice;
+	}
+
+	public String getAudioFile() {
+		return audioFile;
+	}
+
+	public void setAudioFile(String audioFile) {
+		this.audioFile = audioFile;
+	}
+
+	public String getVipUUID() {
+		return vipUUID;
+	}
+
+	public void setVipUUID(String vipUUID) {
+		this.vipUUID = vipUUID;
+	}
+
+	public String getStatus() {
+		return status;
+	}
+
+	public void setStatus(String status) {
+		this.status = status;
+	}
+
+
+	public String getBeginPhoneNumber() {
+		return beginPhoneNumber;
+	}
+
+	public void setBeginPhoneNumber(String beginPhoneNumber) {
+		this.beginPhoneNumber = beginPhoneNumber;
+	}
+
+	public String getBeginAddress() {
+		return beginAddress;
+	}
+
+	public void setBeginAddress(String beginAddress) {
+		this.beginAddress = beginAddress;
+	}
+
+	public String getBeginLongitude() {
+		return beginLongitude;
+	}
+
+	public void setBeginLongitude(String beginLongitude) {
+		this.beginLongitude = beginLongitude;
+	}
+
+	public String getBeginLatitude() {
+		return beginLatitude;
+	}
+
+	public void setBeginLatitude(String beginLatitude) {
+		this.beginLatitude = beginLatitude;
+	}
+
+	public String getItemType() {
+		return itemType;
+	}
+
+	public void setItemType(String itemType) {
+		this.itemType = itemType;
+	}
+
+	public String getEndTime() {
+		return endTime;
+	}
+
+	public void setEndTime(String endTime) {
+		this.endTime = endTime;
+	}
+
+	
+    
+	
+	
+}

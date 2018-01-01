@@ -1,0 +1,103 @@
+package com.sctgz.HkdApp.entity;
+
+import dbengine.annotation.Table;
+import dbengine.annotation.TableField;
+
+/**
+ * 收藏地址
+ * @author chengyz
+ *
+ */
+@Table(tableName="collect_address")
+public class CollectAddress {
+	
+	@TableField(isPKey=true,isNotNull=true,isAutoIncrement=true,comment="主键Id,自动增长")
+	private Long id;
+	
+	@TableField(fieldSize=36,isNotNull=true,comment="收藏uuid,全局唯一标识")
+	private String collectUUID;
+	
+	@TableField(fieldSize=36,isNotNull=true,comment="地址UUID")
+	private String addressUUID;
+	
+	@TableField(fieldSize=36,isNotNull=true,comment="会员UUID")
+	private String vipUUID;
+	
+	@TableField(fieldSize=11,isNotNull=true,comment="会员手机号")
+	private String vipPhoneNumber;
+	
+	@TableField(fieldSize=100,isNotNull=true,comment="地址经度")
+	private String longitude;
+	
+	@TableField(fieldSize=100,isNotNull=true,comment="地址玮度")
+	private String latitude;
+	
+	@TableField(fieldSize=20, comment="收藏时间")
+	private String collectTime;
+	
+	public String getVipPhoneNumber() {
+		return vipPhoneNumber;
+	}
+
+	public void setVipPhoneNumber(String vipPhoneNumber) {
+		this.vipPhoneNumber = vipPhoneNumber;
+	}
+	
+	public String getCollectTime() {
+		return collectTime;
+	}
+
+	public void setCollectTime(String collectTime) {
+		this.collectTime = collectTime;
+	}
+
+	public String getLongitude() {
+		return longitude;
+	}
+
+	public void setLongitude(String longitude) {
+		this.longitude = longitude;
+	}
+
+	public String getLatitude() {
+		return latitude;
+	}
+
+	public void setLatitude(String latitude) {
+		this.latitude = latitude;
+	}
+
+	public Long getId() {
+		return id;
+	}
+
+	public void setId(Long id) {
+		this.id = id;
+	}
+
+	public String getAddressUUID() {
+		return addressUUID;
+	}
+
+	public void setAddressUUID(String addressUUID) {
+		this.addressUUID = addressUUID;
+	}
+
+
+	public String getCollectUUID() {
+		return collectUUID;
+	}
+
+	public void setCollectUUID(String collectUUID) {
+		this.collectUUID = collectUUID;
+	}
+
+
+	public String getVipUUID() {
+		return vipUUID;
+	}
+
+	public void setVipUUID(String vipUUID) {
+		this.vipUUID = vipUUID;
+	}
+}

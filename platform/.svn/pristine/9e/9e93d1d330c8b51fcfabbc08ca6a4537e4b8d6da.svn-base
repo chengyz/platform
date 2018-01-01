@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+	<!-- log output to file -->
+	<appender name="ROLLING"
+		class="ch.qos.logback.core.rolling.RollingFileAppender">
+		<file>E:/logs/mylog.txt</file>
+		<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+			<!-- rollover daily -->
+			<fileNamePattern>E:/logs/mylog-%d{yyyy-MM-dd_HH-mm}.%i.log
+			</fileNamePattern>
+			<maxHistory>5</maxHistory>
+			<timeBasedFileNamingAndTriggeringPolicy
+				class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+				<!-- or whenever the file size reaches 100MB -->
+				<maxFileSize>100MB</maxFileSize>
+			</timeBasedFileNamingAndTriggeringPolicy>
+		</rollingPolicy>
+		<encoder>
+			<pattern>%date %level [%thread] %logger{36} [%file : %line] %msg%n
+			</pattern>
+		</encoder>
+	</appender>
+	<!-- log output to console -->
+	<appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+		<encoder>
+			<pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} -
+				%msg%n</pattern>
+		</encoder>
+	</appender>
+	<!-- log output to db -->
+	<appender name="DB" class="ch.qos.logback.classic.db.DBAppender">
+		<connectionSource
+			class="ch.qos.logback.core.db.DriverManagerConnectionSource">
+			<dataSource class="org.apache.tomcat.jdbc.pool.DataSource">
+				<driverClass>com.mysql.jdbc.Driver</driverClass>
+				<url>jdbc:mysql://127.0.0.1:3306/sctdb</url>
+				<user>root</user>
+				<password>root</password>
+			</dataSource>
+		</connectionSource>
+	</appender>
+
+	<logger name="com.ttt.ttt" level="DEBUG">
+		<appender-ref ref="STDOUT" />
+	</logger>
+    <!-- 打印sql -->
+	<logger name="java.sql.Connection" level="DEBUG">
+		<appender-ref ref="STDOUT" />
+	</logger>
+	<root level="DEBUG">
+	    <!-- 日志文件中显示 -->
+		<appender-ref ref="ROLLING" />
+		<!-- 控制台中显示 -->
+		<appender-ref ref="STDOUT" />
+	</root>
+</configuration> 

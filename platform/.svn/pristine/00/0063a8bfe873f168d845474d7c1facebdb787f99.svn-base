@@ -1,0 +1,230 @@
+package com.sctgz.platform.service.impl;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import spark.annotation.Auto;
+
+import com.mysql.jdbc.StringUtils;
+import com.sctgz.platform.entity.TradeType;
+import com.sctgz.platform.service.ITradeTypeService;
+import com.sctgz.util.CodeUtil;
+
+import dbengine.dao.EntityDao;
+import dbengine.dao.SqlDao;
+import dbengine.util.Page;
+
+public class TradeTypeServiceImpl implements ITradeTypeService {
+
+	@SuppressWarnings("rawtypes")
+	@Auto(name=EntityDao.class)
+	private EntityDao entityDao;
+	
+	@SuppressWarnings("rawtypes")
+	@Auto(name=SqlDao.class)
+	private SqlDao sqlDao;
+	
+	@Override
+	public boolean saveOrUpTradeType(String sourceId, boolean closeConn,
+			TradeType tradeType) {
+		if (tradeType==null){
+			return false;
+		}
+		if (tradeType.getId()==null){
+			return entityDao.saveEntity(sourceId, tradeType, closeConn);
+		}else{
+			return entityDao.updateEntity(sourceId, tradeType, closeConn);
+		}
+	}
+
+	@SuppressWarnings("unchecked")
+	@Override
+	public boolean delTradeTypeById(String sourceId, boolean closeConn,
+			String id) {
+		if (StringUtils.isNullOrEmpty(id)){
+			return false;
+		}
+		StringBuilder sql = new StringBuilder();
+		List<String> params = new ArrayList<String>();
+		sql.append("delete from trade_type where id = ?");
+		params.add(id);
+		return sqlDao.executeSql(sourceId, sql.toString(), closeConn, params);
+	}
+
+	@SuppressWarnings("unchecked")
+	@Override
+	public boolean delTradeTypeByUUID(String sourceId, boolean closeConn,
+			String uuid) {
+		StringBuilder sql = new StringBuilder();
+		List<String> params = new ArrayList<String>();
+		sql.append("delete from trade_type where typeUUID = ?");
+		params.add(uuid);
+		return sqlDao.executeSql(sourceId, sql.toString(), closeConn, params);
+	}
+
+	@SuppressWarnings("unchecked")
+	@Override
+	public TradeType findTradeTypeById(String sourceId, boolean closeConn,
+			String id) {
+		if (StringUtils.isNullOrEmpty(id)){
+			return null;
+		}
+		StringBuilder sql = new StringBuilder();
+		List<String> params = new ArrayList<String>();
+		sql.append("select * from trade_type where id = ? ");
+		params.add(id);
+		return (TradeType) sqlDao.findEntityBySql(sourceId, sql.toString(), TradeType.class, closeConn, params);
+	}
+
+	@SuppressWarnings("unchecked")
+	@Override
+	public TradeType findTradeTypeByUUID(String sourceId, boolean closeConn,
+			String uuid) {
+		if (StringUtils.isNullOrEmpty(uuid)){
+			return null;
+		}
+		StringBuilder sql = new StringBuilder();
+		List<String> params = new ArrayList<String>();
+		sql.append("select * from trade_type where typeUUID = ? ");
+		params.add(uuid);
+		return (TradeType) sqlDao.findEntityBySql(sourceId, sql.toString(), TradeType.class, closeConn, params);
+	}
+	
+	@Override
+	public List<TradeType> findTradeTypeList(String sourceId,
+			boolean closeConn, Map<String, String> findMap) {
+		StringBuilder sql = new StringBuilder();
+		List<String> params = new ArrayList<String>();
+		sql.append("select * from trade_type where 1 = 1 ");
+		if (findMap!=null){
+			if (findMap.get("typeUUID") != null && !"".equals(findMap.get("typeUUID")) && !"null".equals(findMap.get("typeUUID"))){
+				sql.append(" and typeUUID = ? ");
+				params.add(findMap.get("typeUUID"));
+			}
+			if (findMap.get("typeCode") != null && !"".equals(findMap.get("typeCode")) && !"null".equals(findMap.get("typeCode"))){
+				sql.append(" and typeCode = ? ");
+				params.add(findMap.get("typeCode"));
+			}
+			if (findMap.get("typeParentCode") != null && !"".equals(findMap.get("typeParentCode")) && !"null".equals(findMap.get("typeParentCode"))){
+				sql.append(" and typeParentCode = ? ");
+				params.add(findMap.get("typeParentCode"));
+			}
+			if (findMap.get("typeName") != null && !"".equals(findMap.get("typeName")) && !"null".equals(findMap.get("typeName"))){
+				sql.append(" and typeName like '%").append(findMap.get("typeName").replace("'", "")).append("%'");
+			}
+		}
+		sql.append("order by typeCreateTime asc");
+		return sqlDao.findListBySql(sourceId, sql.toString(), TradeType.class, closeConn, params);
+	}
+	
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	@Override
+	public List<Map> findTradeTypeListMap(String sourceId, boolean closeConn,
+			Page page, Map<String, String> findMap) {
+		StringBuilder sql = new StringBuilder();
+		List<String> params = new ArrayList<String>();
+		sql.append("select * from trade_type where 1 = 1 ");
+		if (findMap!=null){
+			if (findMap.get("typeUUID") != null && !"".equals(findMap.get("typeUUID")) && !"null".equals(findMap.get("typeUUID"))){
+				sql.append(" and typeUUID = ? ");
+				params.add(findMap.get("typeUUID"));
+			}
+			if (findMap.get("typeCode") != null && !"".equals(findMap.get("typeCode")) && !"null".equals(findMap.get("typeCode"))){
+				sql.append(" and typeCode = ? ");
+				params.add(findMap.get("typeCode"));
+			}
+			if (findMap.get("typeParentCode") != null && !"".equals(findMap.get("typeParentCode")) && !"null".equals(findMap.get("typeParentCode"))){
+				sql.append(" and typeParentCode = ? ");
+				params.add(findMap.get("typeParentCode"));
+			}
+			if (findMap.get("typeName") != null && !"".equals(findMap.get("typeName")) && !"null".equals(findMap.get("typeName"))){
+				sql.append(" and typeName like '%").append(findMap.get("typeName").replace("'", "")).append("%'");
+			}
+		}
+		sql.append("order by typeCreateTime asc");
+		List<Map> list = new ArrayList<Map>();
+		if (page==null){
+			list = sqlDao.findMapListBysql(sourceId, sql.toString(), closeConn, params);
+		}else{
+			list = sqlDao.findPageByMysql(sourceId, sql.toString(), closeConn, null, page, params);
+		}
+		return list;
+	}
+
+	@Override
+	public String getNextTradeCode(String sourceId, boolean closeConn,
+			String tradeParentCode) {
+		if (StringUtils.isNullOrEmpty(tradeParentCode)){
+			return null;
+		}
+		StringBuilder sql = new StringBuilder();
+		List<Object> params = new ArrayList<Object>();
+		sql.append("select * from trade_type t where 1=1");
+		sql.append(" and t.typeParentCode = '").append(tradeParentCode).append("'");
+		//查该父节点的所有下级节点
+		@SuppressWarnings("unchecked")
+		List<TradeType> menuList = (List<TradeType>) sqlDao.findListBySql(sourceId, sql.toString(), TradeType.class, closeConn, params);
+		String returnCode = "";
+		// 生成下一个节点
+		// 将同级节点保存到map,目的是从中找出没有被利用的code,避免节点被删除后编码不能再次使用的问题
+		Map<String,String> map = new HashMap<String,String>();
+		for (TradeType tradeType : menuList) {
+			// 表示是直接下级节点，加入到map中
+			map.put(tradeType.getTypeParentCode(), tradeType.getTypeParentCode());
+		}
+		for (int i = 0; i < CodeUtil.getCode2Arr().length; i++) {
+			if ("-1".equals(tradeParentCode)) {// 父节点为-1表示为顶级节点，做特殊处理
+				if (map.get(CodeUtil.getCode2Arr()[i]) == null) {
+					// 没有查到该编码，说明可用
+					returnCode = CodeUtil.getCode2Arr()[i];
+					break;
+				}
+			} else {
+				if (map.get(tradeParentCode + CodeUtil.getCode2Arr()[i]) == null) {
+						// 没有查到该编码，说明可用
+						returnCode = tradeParentCode + CodeUtil.getCode2Arr()[i];
+						break;
+				}
+			}
+		}
+		return returnCode;
+	}
+
+	@SuppressWarnings("unchecked")
+	@Override
+	public List<String> getParentTradeCode(String sourceId, boolean closeConn) {
+		StringBuilder sql = new StringBuilder();
+		List<String> params = new ArrayList<String>();
+		sql.append("select * from trade_type where 1 = 1 ");
+		sql.append("group by typeParentCode");
+		List<TradeType> list = (List<TradeType>) sqlDao.findListBySql(sourceId, sql.toString(), TradeType.class, closeConn, params);
+		List<String> strList = null;
+		if(list.size()>0){
+			strList = new ArrayList<String>();
+			for (int i = 0;i < list.size();i++){
+				strList.add(list.get(i).getTypeParentCode());
+			}
+		}
+		return strList;
+	}
+
+	@Override
+	public List<Map<String, String>> findTypeNameToAutocompleter(String sourceId, boolean closeConn, String typeName) {
+		List<Map<String, String>> list = null;
+		try {
+			StringBuilder sql = new StringBuilder();
+			sql.append("select typeUUID as hideValue, typeName as value, typeName as label from trade_type where 1 = 1 ");
+			if(typeName != null && !"".equals(typeName)) {
+				sql.append("and typeName like '%").append(typeName.replace("'", "")).append("%' ");
+			}
+			list = sqlDao.findMapListBysql(sourceId, sql.toString(), closeConn, null);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return list;
+	}
+
+
+}

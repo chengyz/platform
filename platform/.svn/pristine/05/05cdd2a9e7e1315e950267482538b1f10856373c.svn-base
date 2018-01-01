@@ -1,0 +1,97 @@
+package com.sctgz.HkdApp.service.impl;
+
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+import spark.annotation.Auto;
+
+import com.sctgz.HkdApp.entity.AppHomePage;
+import com.sctgz.HkdApp.service.AppHomePageService;
+import com.sctgz.util.DateTimeUtil;
+
+import dbengine.dao.EntityDao;
+import dbengine.dao.SqlDao;
+import dbengine.util.Page;
+/**
+ * 好快当APP首页显示图片的service实现
+ * @author chengyz
+ *
+ */
+public class AppHomePageServiceImpl implements AppHomePageService {
+	@Auto(name=SqlDao.class)
+	private SqlDao sqldao;
+	
+	@Auto(name=EntityDao.class)
+	private EntityDao entityDao;
+	
+	/**
+	 * 保存或修改首页图片
+	 */
+	@Override
+	public boolean saveOrUpImage(String sourceId, boolean closeConn, AppHomePage appHomePage) {
+		if(appHomePage == null){
+			return false;
+		}
+		if(appHomePage.getId() == null){
+			appHomePage.setPageUUID(UUID.randomUUID().toString());
+			appHomePage.setCreateTime(DateTimeUtil.formatDate(new Date(), "yyyy-MM-dd HH:mm:ss"));
+			return entityDao.saveEntity(sourceId, appHomePage, closeConn);
+		}else{
+			return entityDao.updateEntity(sourceId, appHomePage, closeConn);
+		}
+	}
+	/**
+	 * 查询首页图片
+	 */
+	@Override
+	public AppHomePage findImage(String sourceId, boolean closeConn, String pageUUID) {
+		if(pageUUID != null && !"".equals(pageUUID)){
+			StringBuilder sql = new StringBuilder();
+			sql.append("select * from app_home_page where pageUUID = '").append(pageUUID).append("'");
+			return (AppHomePage)sqldao.findEntityBySql(sourceId, sql.toString(), AppHomePage.class, closeConn, null);
+		}else{
+			return null;
+		}
+	}
+	/**
+	 * 手机app查询首页图片列表
+	 */
+	@Override
+	public List<AppHomePage> findImageListM(String sourceId, boolean closeConn, String belong) {
+		StringBuilder sql = new StringBuilder();
+		sql.append("select * from app_home_page where disable = '2'");
+		if(belong != null && !"".equals(belong)) {
+			sql.append(" and belongApp = '").append(belong).append("'");
+		}
+		sql.append(" order by displayOrder");
+		return sqldao.findListBySql(sourceId, sql.toString(), AppHomePage.class, closeConn, null);
+	}
+	/**
+	 * 后台查询首页图片列表
+	 */
+	@Override
+	public List<AppHomePage> findImageList(String sourceId, boolean closeConn, Page page, Map<String, String> findMap) {
+		StringBuilder sql = new StringBuilder();
+		sql.append("select * from app_home_page order by displayOrder");
+		if(page == null){
+			return sqldao.findListBySql(sourceId, sql.toString(), AppHomePage.class, closeConn, null);
+		}else{
+			return sqldao.findPageByMysql(sourceId, sql.toString(), closeConn, AppHomePage.class, page, null);
+		}
+	}
+	/**
+	 * 删除首页图片
+	 */
+	@Override
+	public boolean deleteImage(String sourceId, boolean closeConn, String pageUUID) {
+		if(pageUUID == null){
+			return false;
+		}
+		StringBuilder sql = new StringBuilder();
+		sql.append("delete from app_home_page where pageUUID = '").append(pageUUID).append("'");
+		return sqldao.executeSql(sourceId, sql.toString(), closeConn, null);
+	}
+
+}

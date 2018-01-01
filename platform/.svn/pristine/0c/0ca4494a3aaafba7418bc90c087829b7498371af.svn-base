@@ -1,0 +1,243 @@
+package com.sctgz;
+import spark.annotation.Auto;
+import spark.servlet.ISparkApplication;
+
+import com.sctgz.HkdApp.action.AddressInfoAction;
+import com.sctgz.HkdApp.action.AlipayAction;
+import com.sctgz.HkdApp.action.AppAction;
+import com.sctgz.HkdApp.action.AppHomePageAction;
+import com.sctgz.HkdApp.action.AppStartPageAction;
+import com.sctgz.HkdApp.action.AudioFileAction;
+import com.sctgz.HkdApp.action.BusinessAction;
+import com.sctgz.HkdApp.action.CertificateInfoAction;
+import com.sctgz.HkdApp.action.ChangeTimeAction;
+import com.sctgz.HkdApp.action.CollectBusinessAction;
+import com.sctgz.HkdApp.action.CollectCommodityAction;
+import com.sctgz.HkdApp.action.CommodityAction;
+import com.sctgz.HkdApp.action.EvaluateInfoAction;
+import com.sctgz.HkdApp.action.ExceptionOrderAction;
+import com.sctgz.HkdApp.action.FeedBackInfoAction;
+import com.sctgz.HkdApp.action.IDCardAction;
+import com.sctgz.HkdApp.action.LocationAction;
+import com.sctgz.HkdApp.action.MessageAction;
+import com.sctgz.HkdApp.action.NoGetOrderTimedAction;
+import com.sctgz.HkdApp.action.OrderInfoAction;
+import com.sctgz.HkdApp.action.OrderPeopleAction;
+import com.sctgz.HkdApp.action.PayTimedAction;
+import com.sctgz.HkdApp.action.SystemMessageAction;
+import com.sctgz.HkdApp.action.TimedTaskAction;
+import com.sctgz.HkdApp.action.VipBalanceAction;
+import com.sctgz.HkdApp.action.VipConsumptionRecordAction;
+import com.sctgz.HkdApp.action.VipEarnRecordAction;
+import com.sctgz.HkdApp.action.VipSendAddressAction;
+import com.sctgz.HkdApp.action.WeixinNotifyAction;
+import com.sctgz.HkdApp.action.WithdrawCashAction;
+import com.sctgz.platform.action.AppInfoAction;
+import com.sctgz.platform.action.BigFileAction;
+import com.sctgz.platform.action.MenuAction;
+import com.sctgz.platform.action.MenuRoleAction;
+import com.sctgz.platform.action.MenuUnitAction;
+import com.sctgz.platform.action.MenuUserAction;
+import com.sctgz.platform.action.MenuVipAction;
+import com.sctgz.platform.action.RoleAction;
+import com.sctgz.platform.action.RoleUserAction;
+import com.sctgz.platform.action.RoleVipAction;
+import com.sctgz.platform.action.TradeTypeAction;
+import com.sctgz.platform.action.UnitInfoAction;
+import com.sctgz.platform.action.UserAction;
+import com.sctgz.platform.action.VipAction;
+
+
+
+public class AppRoute implements ISparkApplication{
+
+	@Auto(name=MenuAction.class)
+	private MenuAction menuAction;
+	
+	@Auto(name=MenuUnitAction.class)
+	private MenuUnitAction menuUnitAction;
+	
+	@Auto(name=MenuRoleAction.class)
+	private MenuRoleAction menuRoleAction;
+	
+	@Auto(name=MenuUserAction.class)
+	private MenuUserAction menuUserAction;
+	
+	@Auto(name=MenuVipAction.class)
+	private MenuVipAction menuVipAction;
+	
+	@Auto(name=RoleAction.class)
+	private RoleAction roleAction;
+	
+	@Auto(name=RoleUserAction.class)
+	private RoleUserAction roleUserAction;
+	
+	@Auto(name=RoleVipAction.class)
+	private RoleVipAction roleVipAction;
+	
+	@Auto(name=TradeTypeAction.class)
+	private TradeTypeAction tradeTypeAction;
+	
+	@Auto(name=UnitInfoAction.class)
+	private UnitInfoAction unitAction;
+	
+	@Auto(name=UserAction.class)
+	private UserAction userAction;
+	
+	@Auto(name=VipAction.class)
+	private VipAction vipAction;
+	
+	@Auto(name=BusinessAction.class)
+	private BusinessAction businessAction;
+	
+	@Auto(name=OrderInfoAction.class)
+	private OrderInfoAction orderInfoAction;
+	
+	@Auto(name=AddressInfoAction.class)
+	private AddressInfoAction addressInfoAction;
+	
+	
+	@Auto(name=AppAction.class)
+	private AppAction appAction;
+
+	@Auto(name=AudioFileAction.class)
+	private AudioFileAction audioFileAction;
+	
+	@Auto(name=CommodityAction.class)
+	private CommodityAction commodityAction;
+	
+	@Auto(name=CertificateInfoAction.class)
+	private CertificateInfoAction certificateInfoAction;
+	
+	@Auto(name=IDCardAction.class)
+	private IDCardAction idCardAction;
+	
+	@Auto(name=AlipayAction.class)
+	private AlipayAction alipayAction;
+	
+	@Auto(name=WeixinNotifyAction.class)
+	private WeixinNotifyAction weixinNotifyAction;
+	
+	@Auto(name=VipConsumptionRecordAction.class)
+	private VipConsumptionRecordAction vipConsumptionRecordAction;
+	
+	@Auto(name=VipBalanceAction.class)
+	private VipBalanceAction vipBalanceAction;
+	
+	@Auto(name=WithdrawCashAction.class)
+	private WithdrawCashAction withdrawCashAction;
+	
+	@Auto(name=VipSendAddressAction.class)
+	private VipSendAddressAction vipSendAddressAction;
+	
+	@Auto(name=CollectBusinessAction.class)
+	private CollectBusinessAction collectBusinessAction;
+	
+	@Auto(name=CollectCommodityAction.class)
+	private CollectCommodityAction collectCommodityAction;
+	
+	@Auto(name=AppHomePageAction.class)
+	private AppHomePageAction appHomePageAction;
+	
+	@Auto(name=EvaluateInfoAction.class)
+	private EvaluateInfoAction evaluateInfoAction;
+	
+	@Auto(name=LocationAction.class)
+	private LocationAction locationAction;
+	
+	@Auto(name=MessageAction.class)
+	private MessageAction messageAction;
+	
+	@Auto(name=OrderPeopleAction.class)
+	private OrderPeopleAction orderPeopleAction;
+	
+	@Auto(name=AppStartPageAction.class)
+	private AppStartPageAction appStartPageAction;
+	
+	@Auto(name=VipEarnRecordAction.class)
+	private VipEarnRecordAction vipEarnRecordAction;
+	
+	@Auto(name=TimedTaskAction.class)
+	private TimedTaskAction timedTaskAction;
+	
+	@Auto(name=ChangeTimeAction.class)
+	private ChangeTimeAction changeTimeAction;
+	
+	@Auto(name=AppInfoAction.class)
+	private AppInfoAction appInfoAction;
+	
+	@Auto(name=BigFileAction.class)
+	private BigFileAction bigFileAction;
+	
+	@Auto(name=PayTimedAction.class)
+	private PayTimedAction payTimedAction;
+	
+	@Auto(name=NoGetOrderTimedAction.class)
+	private NoGetOrderTimedAction noGetOrderTimedAction;
+	
+	@Auto(name=ExceptionOrderAction.class)
+	private ExceptionOrderAction exceptionOrderAction;
+	
+	@Auto(name=FeedBackInfoAction.class)
+	private FeedBackInfoAction feedBackInfoAction;
+	
+	@Auto(name=SystemMessageAction.class)
+	private SystemMessageAction systemMessageAction;
+	
+	
+	
+	@Override
+	public void run() {
+		/**
+		 * PC端访问入口
+		 */
+		menuAction.run();
+		menuUnitAction.run();
+		menuRoleAction.run();
+		menuUserAction.run();
+		menuVipAction.run();
+		roleAction.run();
+		roleUserAction.run();
+		roleVipAction.run();
+		tradeTypeAction.run();
+		unitAction.run();
+		userAction.run();
+		vipAction.run();
+		businessAction.run();
+		orderInfoAction.run();
+		addressInfoAction.run();
+		appAction.run();
+		audioFileAction.run();
+		commodityAction.run();
+		certificateInfoAction.run();
+		idCardAction.run();
+		alipayAction.run();
+		weixinNotifyAction.run();
+		vipConsumptionRecordAction.run();
+		vipBalanceAction.run();
+		withdrawCashAction.run();
+		vipSendAddressAction.run();
+		collectBusinessAction.run();
+		collectCommodityAction.run();
+		appHomePageAction.run();
+		evaluateInfoAction.run();
+		locationAction.run();
+		messageAction.run();
+		orderPeopleAction.run();
+		appStartPageAction.run();
+		vipEarnRecordAction.run();
+		timedTaskAction.run();
+		changeTimeAction.run();
+		appInfoAction.run();
+		bigFileAction.run();
+		payTimedAction.run();
+		noGetOrderTimedAction.run();
+		exceptionOrderAction.run();
+		feedBackInfoAction.run();
+		systemMessageAction.run();
+		/**
+		 * 手机端访问入口
+		 */
+	}
+
+}

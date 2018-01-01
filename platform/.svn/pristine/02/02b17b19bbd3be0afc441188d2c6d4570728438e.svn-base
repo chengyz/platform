@@ -1,0 +1,60 @@
+package com.sctgz.HkdApp.manage;
+
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+
+import spark.annotation.Auto;
+
+import com.alipay.api.AlipayApiException;
+import com.alipay.api.AlipayClient;
+import com.alipay.api.DefaultAlipayClient;
+import com.alipay.api.request.AlipayOpenPublicTemplateMessageIndustryModifyRequest;
+import com.alipay.api.request.AlipayTradeQueryRequest;
+import com.alipay.api.response.AlipayOpenPublicTemplateMessageIndustryModifyResponse;
+import com.alipay.api.response.AlipayTradeQueryResponse;
+import com.alipay.config.AlipayConfig;
+import com.sctgz.HkdApp.service.ChangeTimeService;
+import com.sctgz.HkdApp.service.OrderInfoService;
+import com.sctgz.HkdApp.service.VipBalanceService;
+import com.sctgz.HkdApp.service.VipEarnRecordService;
+import com.sctgz.HkdApp.service.impl.ChangeTimeServiceImpl;
+import com.sctgz.HkdApp.service.impl.OrderInfoServiceImpl;
+import com.sctgz.HkdApp.service.impl.VipBalanceServiceImpl;
+import com.sctgz.HkdApp.service.impl.VipEarnRecordServiceImpl;
+import com.sctgz.platform.service.IVipService;
+import com.sctgz.platform.service.impl.VipServiceImpl;
+/**
+ * 定时支付执行任务
+ * @author chengyz
+ *
+ */
+public class PayScanTaskMng {
+	
+	@Auto(name=OrderInfoServiceImpl.class)
+	private OrderInfoService orderInfoService;
+	@Auto(name=VipServiceImpl.class)
+	private IVipService vipService;
+	@Auto(name=VipBalanceServiceImpl.class)
+	private VipBalanceService vipBalanceService;
+	@Auto(name=VipEarnRecordServiceImpl.class)
+	private VipEarnRecordService vipEarnRecordSesrvice;
+	@Auto(name=ChangeTimeServiceImpl.class)
+	private ChangeTimeService changeTimeService;
+	
+	/**
+	 * 定时结算订单
+	 */
+	public void task() {
+		Runnable runnable = new Runnable() {
+			@Override
+			public void run() {
+				
+			}  
+       
+		};
+        ScheduledExecutorService service = Executors.newSingleThreadScheduledExecutor(); 
+        service.scheduleAtFixedRate(runnable, 600, 600 , TimeUnit.SECONDS);  
+	} 
+	
+}

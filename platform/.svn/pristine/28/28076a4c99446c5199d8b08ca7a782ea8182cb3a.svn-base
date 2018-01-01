@@ -1,0 +1,274 @@
+package com.sctgz.HkdApp.manage;
+import java.io.File;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import spark.annotation.Auto;
+
+import com.mysql.jdbc.StringUtils;
+import com.sctgz.HkdApp.entity.BusinessInfo;
+import com.sctgz.HkdApp.service.IBusinessService;
+import com.sctgz.HkdApp.service.impl.BusinessServiceImpl;
+import com.sctgz.util.DateUtil;
+import com.sctgz.util.JsonUtil;
+import com.sctgz.util.MapUtil;
+import com.sctgz.util.ReadProperties;
+import com.sctgz.util.ReqToEntityUtil;
+import com.sctgz.util.ReqToMapUtil;
+import com.sctgz.util.SimpleTokenUtil;
+import com.sctgz.util.UpFileUtil;
+import com.sctgz.util.Uploader;
+
+import dbengine.util.Page;
+
+/**
+ * 商家信息管理
+ * 
+ * @author hshzh
+ */
+public class BusinessMng {
+	@Auto(name=BusinessServiceImpl.class)
+	private IBusinessService businessService;
+	
+	/**
+	 * 保存或修改商家信息
+	 * @param sourceId
+	 * @param closeConn
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	public String saveOrUpBusiness(String sourceId, boolean closeConn, HttpServletRequest request, HttpServletResponse response){
+		Map<String, String> map =  new HashMap<String, String>();
+		Map<String, Object> requestMap = new HashMap<String, Object>();
+		UpFileUtil upFile = new UpFileUtil();
+		String today = new SimpleDateFormat("yyyyMMdd").format(new Date());
+		//文件保存路径 
+		String saveFilePath = ReadProperties.getValue("imgUploadPath") + "/shops/" + today + "/";
+		//转化为物理路径存储
+		String realPath = request.getSession().getServletContext().getRealPath(saveFilePath) + System.getProperty("file.separator");
+		requestMap.put("relativePath", saveFilePath );
+		upFile.saveHttpUpFile(request, realPath, requestMap);
+		
+		String token = (String)requestMap.get("token");
+		if(StringUtils.isNullOrEmpty(token)){
+			map.put("status", "-100");
+			map.put("msg", "用户未登录");
+			return JsonUtil.ObjToJson(map);
+		}
+		
+		//判断超期状态
+		boolean isExp = SimpleTokenUtil.isExpiration(token);
+		if(isExp){
+			map.put("status", "-101");
+			map.put("msg", "已超期");
+			return JsonUtil.ObjToJson(map);
+		}
+		
+		//将id强制转换为Long，避免映射字段出错
+		String id = (String)requestMap.get("id");
+		if(!StringUtils.isNullOrEmpty(id)){
+			requestMap.put("id", Long.parseLong(id));
+		}else{
+			requestMap.remove("id");
+		}
+		BusinessInfo busnInfo = (BusinessInfo)MapUtil.mapToObject(requestMap, BusinessInfo.class);
+		//设置时间
+		busnInfo.setBusinessTime(DateUtil.formatDateTime(new Date()));
+		try {
+			if (businessService.saveOrUpBusiness(sourceId, closeConn, busnInfo)){
+				map.put("status", "1");
+				map.put("msg", "成功");
+				return JsonUtil.ObjToJson(map);
+			}else{
+				map.put("status", "-2");
+				map.put("msg", "上传数据失败");
+				return JsonUtil.ObjToJson(map);
+			}
+		}catch (Exception e) {
+			String msg = e.getMessage().toLowerCase();
+			if(msg.contains("duplicate")){
+				map.put("status", "-3");
+				map.put("msg", "上传失败，重复的商家名");
+				
+			}
+		    return JsonUtil.ObjToJson(map);
+		}
+	}
+	/**
+	 * 删除商家信息
+	 * @param sourceId
+	 * @param closeConn
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	public String delBusinessInfo(String sourceId, boolean closeConn, HttpServletRequest request, HttpServletResponse response){
+		Map<String, String> map =  new HashMap<String, String>();
+//		String token = request.getParameter("token");
+//		if(StringUtils.isNullOrEmpty(token)){
+//			map.put("status", "-100");
+//			map.put("msg", "用户未登录");
+//			return JsonUtil.ObjToJson(map);
+//		}
+//		
+//		//判断超期状态
+//		boolean isExp = SimpleTokenUtil.isExpiration(token);
+//		if(isExp){
+//			map.put("status", "-101");
+//			map.put("msg", "已超期");
+//			return JsonUtil.ObjToJson(map);
+//		}
+		
+		String businessUUID = request.getParameter("businessUUID");
+		if (businessUUID !=null && !"".equals(businessUUID)){
+			if (businessService.delBusinessInfo(sourceId, closeConn, businessUUID)){
+				map.put("status", "1");
+				map.put("msg", "成功");
+				return JsonUtil.ObjToJson(map);
+			}else{
+				map.put("status", "0");
+				map.put("msg", "失败");
+				return JsonUtil.ObjToJson(map);
+			}
+		}else{
+			map.put("status", "0");
+			map.put("msg", "未获取到任何信息");
+			return JsonUtil.ObjToJson(map);
+		}
+		
+	}
+	public String findBusinessInfo(String sourceId, boolean closeConn, HttpServletRequest request, HttpServletResponse response){
+//		Map<String, String> map =  new HashMap<String, String>();
+//		String token = request.getParameter("token");
+//		if(StringUtils.isNullOrEmpty(token) || !SimpleTokenUtil.isExistToken(token)){
+//			map.put("status", "-100");
+//			map.put("msg", "用户未登录");
+//			return JsonUtil.ObjToJson(map);
+//		}
+//		
+//		//判断超期状态
+//		boolean isExp = SimpleTokenUtil.isExpiration(token);
+//		if(isExp){
+//			map.put("status", "-101");
+//			map.put("msg", "已超期");
+//			return JsonUtil.ObjToJson(map);
+//		}
+		
+		String businessUUID = request.getParameter("businessUUID");
+		if (businessUUID!=null && !"".equals(businessUUID)){
+			BusinessInfo business = businessService.findBusinessInfo(sourceId, closeConn, businessUUID);
+			if (business!=null){
+				return JsonUtil.ObjToJson(business);
+			}else{
+				return JsonUtil.ObjToJson("[]"); 
+			}
+		}else{
+			return JsonUtil.ObjToJson("[]");
+		}		
+	}
+	public String findBussinessList(String sourceId, boolean closeConn, HttpServletRequest request, HttpServletResponse response){
+//		Map<String, String> map =  new HashMap<String, String>();
+//		String token = request.getParameter("token");
+//		if(StringUtils.isNullOrEmpty(token) || !SimpleTokenUtil.isExistToken(token)){
+//			map.put("status", "-100");
+//			map.put("msg", "用户未登录");
+//			return JsonUtil.ObjToJson(map);
+//		}
+//		
+//		//判断超期状态
+//		boolean isExp = SimpleTokenUtil.isExpiration(token);
+//		if(isExp){
+//			map.put("status", "-101");
+//			map.put("msg", "已超期");
+//			return JsonUtil.ObjToJson(map);
+//		}
+		
+		Map<String, String> findMap = ReqToMapUtil.reqToMap(request, BusinessInfo.class);
+		Page page = (Page) ReqToEntityUtil.reqToEntity(request, Page.class);
+		List<BusinessInfo> list = businessService.findBussinessList(sourceId, closeConn,page,findMap);
+		if(list==null || list.size()<1){
+			return JsonUtil.ObjToJson("[]");
+		}
+		if(page==null){
+			return JsonUtil.ObjToJson(list);
+		}else{
+			return JsonUtil.ObjToJson(page);
+		}		
+	}
+	/**
+	 * 上传商家的图片
+	 * @param sourceId
+	 * @param closeConn
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	public String uploadImage(HttpServletRequest request,HttpServletResponse response) throws Exception{
+		String basePath = ReadProperties.getValue("imgUploadPath");//得到config配置文件的主路径
+		Uploader up = new Uploader(request);
+		up.setSavePath(basePath);
+		String[] fileType = {".gif" , ".png" , ".jpg" , ".jpeg" , ".bmp"};
+		up.setAllowFiles(fileType);
+		up.setMaxSize(10000); //单位KB
+		up.upload();
+		String url = up.getUrl();//文件访问路径
+		return url;
+	}
+	/**
+	 * 后台修改商家信息
+	 * @param sourceId
+	 * @param closeConn
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	public String updateBusiness(String sourceId, boolean closeConn, HttpServletRequest request, HttpServletResponse response){
+		Map<String, String> map =  new HashMap<String, String>();
+		BusinessInfo busnInfo = (BusinessInfo)ReqToEntityUtil.reqToEntity(request, BusinessInfo.class);
+		if(busnInfo != null){
+			try {
+				if (businessService.saveOrUpBusiness(sourceId, closeConn, busnInfo)){
+					map.put("status", "1");
+					map.put("msg", "成功");
+					return JsonUtil.ObjToJson(map);
+				}else{
+					map.put("status", "-2");
+					map.put("msg", "上传数据失败");
+					return JsonUtil.ObjToJson(map);
+				}
+			} catch (Exception e) {
+				String msg = e.getMessage().toLowerCase();
+				if(msg.contains("duplicate")){
+					map.put("status", "-3");
+					map.put("msg", "上传失败，重复的商家名");
+					
+				}
+			}
+		}
+		map.put("status", "-1");
+		map.put("msg", "未获取到信息");
+		return JsonUtil.ObjToJson(map);
+	}
+	/**
+	 * 查询商家类型和区域
+	 * @param sourceId
+	 * @param closeConn
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	public String findTypeAreaList(String sourceId, boolean closeConn, HttpServletRequest request, HttpServletResponse response){
+		Map map = businessService.findTypeAreaList(sourceId, closeConn);
+		if(map == null){
+			return "";
+		}
+		return JsonUtil.ObjToJson(map);
+	}
+}

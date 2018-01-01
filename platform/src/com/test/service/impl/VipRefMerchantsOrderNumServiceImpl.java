@@ -1,0 +1,58 @@
+package com.test.service.impl;
+
+import spark.annotation.Auto;
+
+import com.test.entity.VipRefMerchantsOrderNum;
+import com.test.service.IVipRefMerchantsOrderNumService;
+
+import dbengine.dao.EntityDao;
+import dbengine.dao.SqlDao;
+
+/**
+ * 商户订单号记录service
+ * @author chengyz
+ *
+ */
+public class VipRefMerchantsOrderNumServiceImpl implements
+		IVipRefMerchantsOrderNumService {
+	@Auto(name=EntityDao.class)
+	private EntityDao entitydao;
+	
+	@Auto(name=SqlDao.class)
+	private SqlDao sqldao;
+	/**
+	 * 查询商户订单号记录
+	 */
+	@Override
+	public VipRefMerchantsOrderNum findByMerchantsOrderNum(String sourceId,boolean closeConn,
+			String merchantsOrderNum) {
+		StringBuilder sql = new StringBuilder();
+		sql.append("select * from vip_ref_merchantsordernum where ")
+		   .append("merchantsOrderNo = '").append(merchantsOrderNum).append("' ");
+		VipRefMerchantsOrderNum t = (VipRefMerchantsOrderNum)sqldao.findEntityBySql("jdbcread", sql.toString(), VipRefMerchantsOrderNum.class, false, null);
+		return t;
+	}
+	/**
+	 * 保存或修改商户订单号记录
+	 */
+	@Override
+	public boolean saveOrUpdate(String sourceId,boolean closeConn,VipRefMerchantsOrderNum t) {
+		if(t.getId() == null) {
+			return entitydao.saveEntity("jdbcwrite", t, false);
+		} else {
+			return entitydao.updateEntity("jdbcwrite", t, false);
+		}
+	}
+	/**
+	 * 删除商户订单号记录
+	 */
+	@Override
+	public boolean delete(String sourceId,boolean closeConn,String vipUUID, String merchantsOrderNum) {
+		StringBuilder sql = new StringBuilder();
+		sql.append("delete from vip_ref_merchantsordernum where ")
+		   .append("vipUUID = '").append(vipUUID).append("'")
+		   .append(" and merchantsOrderNo = '").append(merchantsOrderNum).append("' ");
+		return sqldao.executeSql(sourceId, sql.toString(), closeConn, null);
+	}
+
+}

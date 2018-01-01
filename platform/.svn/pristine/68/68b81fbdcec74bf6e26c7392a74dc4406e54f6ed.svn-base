@@ -1,0 +1,306 @@
+package com.sctgz.platform.service.impl;
+
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+import com.mysql.jdbc.StringUtils;
+import com.sctgz.platform.entity.MenuInfo;
+import com.sctgz.platform.entity.MenuUser;
+import com.sctgz.platform.entity.UserInfo;
+import com.sctgz.platform.service.IUserService;
+import com.sctgz.util.DateTimeUtil;
+import com.sctgz.util.MD5;
+import com.sctgz.util.PinyinUtil;
+
+import dbengine.dao.EntityDao;
+import dbengine.dao.SqlDao;
+import dbengine.util.Page;
+import spark.annotation.Auto;
+
+/**
+ * 用户信息service
+ * @author hshzh
+ *
+ */
+public class UserServiceImpl implements IUserService{
+	/**
+	 *  注入dao
+	 */
+	@Auto(name=EntityDao.class)
+	private EntityDao entitydao;
+	
+	@Auto(name=SqlDao.class)
+	private SqlDao sqldao;
+	@Override
+	public boolean saveOrUpUser(String sourceId,boolean closeConn,UserInfo user) {
+		if(user==null){
+			return false;
+		}
+		if(user.getId()==null){
+			//新增
+			user.setCreateTime(DateTimeUtil.formatDateTime(new Date(), "yyyy-MM-dd HH:mm:ss"));//创建时间
+			user.setUserStatus("1");//状态为正常启用
+			//设置真实姓名的拼音
+			user.setFullSpelling(PinyinUtil.getPinYin(user.getUserName()));//全拼
+			user.setSimpleSpelling(PinyinUtil.converterToFirstSpell(user.getUserName()));//简拼
+			user.setQueryCombination(user.getUserMobile()+"/"+user.getUserName()+"/"+user.getSimpleSpelling()+"/"+user.getFullSpelling());//名称组合(手机/姓名/姓名简拼/姓名的全拼)
+			if(user.getUserPwd() == null || "".equals(user.getUserPwd())) {
+				//密码加密
+				user.setUserPwd((new MD5()).getMD5ofStr("000000"));//密码默认6个0
+			}else{
+				user.setUserPwd((new MD5()).getMD5ofStr(user.getUserPwd()));//新密码md5加密
+			}
+			return entitydao.saveEntity(sourceId,user,false);
+		}else{
+			//修改
+			user.setUpdateTime(DateTimeUtil.formatDateTime(new Date(), "yyyy-MM-dd HH:mm:ss"));//修改时间
+			//设置真实姓名的拼音
+			user.setFullSpelling(PinyinUtil.getPinYin(user.getUserName()));//全拼
+			user.setSimpleSpelling(PinyinUtil.converterToFirstSpell(user.getUserName()));//简拼
+			user.setQueryCombination(user.getUserMobile()+"/"+user.getUserName()+"/"+user.getSimpleSpelling()+"/"+user.getFullSpelling());//名称组合(手机/姓名/姓名简拼/姓名的全拼)
+			if(user.getUserPwd().length() < 32){
+				user.setUserPwd((new MD5()).getMD5ofStr(user.getUserPwd()));
+			}
+			return entitydao.updateEntity(sourceId,user,closeConn);
+		}
+	}
+
+	@Override
+	public List<UserInfo> findUserInfoList(String sourceId,boolean closeConn,Page page,String unitUUID, Map<String, String> findMap) {
+		if(unitUUID==null || "".equals(unitUUID)){
+			return null;
+		}
+		List<Object> params = new ArrayList<Object>();
+		StringBuilder sql = new StringBuilder();
+		sql.append("select * from user_info where unitUUID = ? "); 
+		params.add(unitUUID);
+		if(findMap!=null){
+			if(findMap.get("userPwd") != null && !"".equals(findMap.get("userPwd")) && !"null".equals(findMap.get("userPwd"))){
+				//密码
+				sql.append(" or userPwd = ?");
+				params.add(findMap.get("userPwd"));
+			}
+			if(findMap.get("userName") != null && !"".equals(findMap.get("userName")) && !"null".equals(findMap.get("userName"))){
+				//真实用户名
+				sql.append(" or userName like '%").append(findMap.get("userName").replace("'", "")).append("%'");
+			}
+			if(findMap.get("userType") != null && !"".equals(findMap.get("userType")) && !"null".equals(findMap.get("userType"))){
+				//用户类型
+				sql.append(" or userType = ? ");
+				params.add(findMap.get("userType"));
+			}
+
+			if(findMap.get("nickName") != null && !"".equals(findMap.get("nickName")) && !"null".equals(findMap.get("nickName"))){
+				//昵称
+				sql.append(" or nickName like '%").append(findMap.get("nickName").replace("'", "")).append("%'");
+			}
+			if(findMap.get("emSex") != null && !"".equals(findMap.get("emSex")) && !"null".equals(findMap.get("emSex"))){
+				//性别
+				sql.append(" or emSex = ?");
+				params.add(findMap.get("emSex"));
+			}
+			if(findMap.get("status") != null && !"".equals(findMap.get("status")) && !"null".equals(findMap.get("status"))){
+				//状态
+				sql.append(" or status = ?");
+				params.add(findMap.get("status"));
+			}
+			if(findMap.get("createTime") != null && !"".equals(findMap.get("createTime")) && !"null".equals(findMap.get("createTime")) && findMap.get("createTime").indexOf("|")>0){
+				//创建时间(格式 begTime|endTime)
+				sql.append(" or createTime >= ?");
+				params.add(findMap.get("createTime").split("\\|")[0]);
+				sql.append(" and createTime <= ?");
+				params.add(findMap.get("createTime").split("\\|")[1]);
+			}
+			if(findMap.get("combination") != null && !"".equals(findMap.get("combination")) && !"null".equals(findMap.get("combination"))){
+				sql.append(" or combination like '%").append(findMap.get("combination").replace("'", "")).append("%'");
+			}
+			
+			if(findMap.get("loginName") != null && !"".equals(findMap.get("loginName")) && !"null".equals(findMap.get("loginName"))){
+				//登陆名
+				sql.append(" and loginName like '%").append(findMap.get("loginName").replace("'", "")).append("%'");
+			}
+			
+			if(findMap.get("mobilePhone") != null && !"".equals(findMap.get("mobilePhone")) && !"null".equals(findMap.get("mobilePhone"))){
+				//手机
+				sql.append(" or mobilePhone like '%").append(findMap.get("mobilePhone").replace("'", "")).append("%'");
+			}
+		}
+		sql.append(" order by userType asc ");
+		if(page==null){
+			return (List<UserInfo>)sqldao.findListBySql(sourceId, sql.toString(), UserInfo.class, closeConn, params);
+		}else{
+			return (List<UserInfo>)sqldao.findPageByMysql(sourceId, sql.toString(), closeConn, UserInfo.class, page, params);
+		}
+	}
+
+	@Override
+	public UserInfo findUserInfo(String sourceId,boolean closeConn,String unitUUID, Map<String, String> findMap) {
+		StringBuilder sql = new StringBuilder();
+		List<Object> params = new ArrayList<Object>();
+		sql.append("select * from user_info where 1=1");
+		if(unitUUID != null && !"".equals(unitUUID)){
+			sql.append(" and  unitUUID = ?");
+			params.add(unitUUID);
+		}
+		if(findMap!=null){
+			if(findMap.get("userUUID")!=null && !"".equals(findMap.get("userUUID")) && !"null".equals(findMap.get("userUUID"))){
+				//UUID唯一编号
+				sql.append(" and userUUID = ?");
+				params.add(findMap.get("userUUID"));
+			}
+			if(findMap.get("userType")!=null && !"".equals(findMap.get("userType")) && !"null".equals(findMap.get("userType"))){
+				sql.append(" and userType = ?");
+				params.add(findMap.get("userType"));
+			}
+			if(findMap.get("loginName") != null && !"".equals(findMap.get("loginName")) && !"null".equals(findMap.get("loginName"))){
+				sql.append(" and loginName = ?");
+				params.add(findMap.get("loginName"));
+			}
+			if(findMap.get("userPwd") != null && !"".equals(findMap.get("userPwd")) && !"null".equals(findMap.get("userPwd"))){
+				sql.append(" and userPwd = ?");
+				params.add(findMap.get("userPwd"));
+			}
+		}
+	   return (UserInfo)sqldao.findEntityBySql(sourceId, sql.toString(), UserInfo.class, closeConn, params);
+	}
+
+	@Override
+	public boolean upUserPwd(String sourceId,boolean closeConn,String userUUID, String oldPwd, String newPwd) {
+		if(userUUID==null || "".equals(userUUID) || newPwd==null || "".equals(newPwd)){
+			return false;
+		}
+		StringBuilder sql = new StringBuilder();
+		List<Object> params = new ArrayList<Object>();
+		sql.append("update user_info set userPwd = ? ");
+		params.add(newPwd);
+		sql.append(" where userUUID = ?");
+		params.add(userUUID);
+		if(oldPwd!=null && !"".equals(oldPwd) && !"null".equals(oldPwd)){
+			sql.append(" and userPwd = ? ");
+			params.add(oldPwd);
+		}
+		//返回false则表示用户名或密码错误
+		return sqldao.executeSql(sourceId, sql.toString(), closeConn, params);
+	}
+
+	@Override
+	public boolean deleteUser(String sourceId,boolean closeConn,String userUUID) {
+		if(userUUID==null || "".equals(userUUID)){
+			return false;
+		}
+		StringBuilder sql = new StringBuilder();
+		List<Object> params = new ArrayList<Object>();
+		sql.append("delete from user_info where userUUID = ?");
+		params.add(userUUID);
+		return sqldao.executeSql(sourceId, sql.toString(), closeConn, params);
+	}
+
+	@Override
+	public UserInfo findUserInfoByUUID(String sourceId,boolean closeConn,String userUUID) {
+		StringBuilder sql = new StringBuilder();
+		sql.append("select * from user_info where userUUID = '")
+		   .append(userUUID).append("'");
+		return (UserInfo)sqldao.findEntityBySql(sourceId, sql.toString(), UserInfo.class, closeConn, null);
+	}
+	@Override
+	public boolean updateUserStatus(String sourceId,boolean closeConn,String unitUUID, String userUUID, String status) {
+		if(unitUUID==null || "".equals(unitUUID) || "null".equals(unitUUID) || userUUID==null || "".equals(userUUID) || "null".equals(userUUID) || status==null || "".equals(status) || "null".equals(status)){
+			return false;
+		}
+		StringBuilder sql = new StringBuilder();
+		List<Object> params = new ArrayList<Object>();
+		sql.append("update user_info set status = ? ");
+		params.add(status);
+		sql.append(" where unitUUID = ?");
+		params.add(unitUUID);
+		sql.append(" and userUUID = ?");
+		params.add(userUUID);
+		return sqldao.executeSql(sourceId, sql.toString(), closeConn, params);
+	}
+
+	@Override
+	public List<MenuInfo> findMenuByUserUUID(String sourceId,boolean closeConn,String unitUUID, String userUUID, String menuParentCode) {
+		if(unitUUID==null || "".equals(unitUUID) || "null".equals(unitUUID)){
+			return null;
+		}
+		StringBuilder sql = new StringBuilder();
+		List<Object> params = new ArrayList<Object>(); 
+		sql.append("select * from menu_info m where m.unitUUID = ?");
+		params.add(unitUUID);
+		if(userUUID != null && !"".equals(userUUID) && !"null".equals(userUUID)){
+			sql.append(" and (m.menuUUID in (");
+				sql.append("select mr.menuUUID from menu_role mr where mr.roleUUID in (");
+					sql.append("select roleUUID from role_user ru where ru.userUUID = ?");
+					params.add(userUUID);
+				sql.append(")");
+			sql.append(")");				
+				sql.append("or m.menuUUID in(select mu.menuUUID from menu_user mu where mu.userUUID=?");
+				params.add(userUUID);
+				sql.append(")");
+			sql.append(")");
+		}
+		if(menuParentCode != null && !"".equals(menuParentCode) && !"null".equals(menuParentCode)){
+			sql.append(" and menuParentCode like '").append(menuParentCode).append("%'");
+		}
+		return sqldao.findListBySql(sourceId, sql.toString(), MenuInfo.class, closeConn, params);
+	}
+	
+	@Override
+	public List<MenuUser> findMenuByUserUUID(String sourceId,boolean closeConn,String unitUUID, String userUUID) {
+		if(unitUUID==null || "".equals(unitUUID) || "null".equals(unitUUID)){
+			return null;
+		}
+		StringBuilder sql = new StringBuilder();
+		List<Object> params = new ArrayList<Object>(); 
+		sql.append("select * from menu_user m where m.unitUUID = ? and userUUID = ?");
+		params.add(unitUUID);
+		params.add(userUUID);
+		return sqldao.findListBySql(sourceId, sql.toString(), MenuUser.class, closeConn, params);
+	}
+
+	@Override
+	public MenuInfo findMenuByPermission(String sourceId,boolean closeConn,String unitUUID, String menuPermission) {
+		if(unitUUID==null || "".equals(unitUUID) || "null".equals(unitUUID) || menuPermission==null || "".equals(menuPermission) || "null".equals(menuPermission)){
+			return null;
+		}
+		StringBuilder sql = new StringBuilder();
+		List<Object> params = new ArrayList<Object>();
+		sql.append("select * from menu_info where unitUUID = ?");
+		params.add(unitUUID);
+		sql.append(" and menuPermission = ?");
+		params.add(menuPermission);
+		return (MenuInfo)sqldao.findEntityBySql(sourceId, sql.toString(), MenuInfo.class, closeConn, params);
+	}
+
+	@Override
+	public boolean findLoginNameExist(String sourceId, boolean closeConn, String loginName) {
+		if(loginName==null || "".equals(loginName)){
+			return false;//参数错误
+		}
+		String sql = "select * from user_info where loginName='"+loginName.replace("'", "''")+"'";
+		Object user = sqldao.findEntityBySql(sourceId, sql, UserInfo.class, closeConn, null);
+		if(user==null){
+			return false;
+		}else{
+			user=null;
+			return true;
+		}
+	}
+	/**
+	 * 手机找回密码
+	 */
+	@Override
+	public boolean findPwd(String sourceId, boolean closeConn, String vipPwd,String loginName) {
+		StringBuilder sql = new StringBuilder();
+		List<Object> params = new ArrayList<Object>();
+		sql.append("update vip_info set vipPwd = ? ");
+		params.add(vipPwd);
+		sql.append(" where loginName = ?");
+		params.add(loginName);
+		return sqldao.executeSql(sourceId, sql.toString(), closeConn, params);
+	}
+
+}

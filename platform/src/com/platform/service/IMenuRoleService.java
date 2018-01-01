@@ -1,0 +1,44 @@
+package com.platform.service;
+
+import java.util.List;
+import java.util.Map;
+
+import com.platform.entity.MenuInfo;
+import com.platform.entity.MenuRole;
+
+/**
+ * 菜单角色信息关联接口
+ * @author hshzh
+ *
+ */
+public interface IMenuRoleService {
+	/**
+	 * 批量保存菜单角色信息
+	 * @param mrList
+	 * @return
+	 */
+	public boolean saveMenuRole(String sourceId,boolean closeConn,List<MenuRole> mrList);
+	
+	/**
+	 * 删除菜单角色信息
+	 * @param roleUUID
+	 * @param menuUUID
+	 * @return
+	 */
+	public boolean deleteMenuRole(String sourceId,boolean closeConn,String roleUUID,String menuUUID);
+	/**
+	 * 通过角色UUID查关联的菜单信息
+	 * @param roleUUID
+	 * @return
+	 */
+	public List<MenuInfo> findMenuByRoleUUID(String sourceId,boolean closeConn,String roleUUID);
+	/**
+	 * 通过角色UUID查非关联的菜单信息
+	 * @param roleUUID
+	 * @return
+	 */
+	public List<MenuInfo> findNotMenuByRoleUUID(String sourceId,boolean closeConn,String roleUUID);
+	
+	@SuppressWarnings("rawtypes")
+	public List<Map> findAllMenuItemForRole(String sourceId,boolean closeConn,String roleUUID, String unitUUID);
+}

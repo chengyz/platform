@@ -1,0 +1,177 @@
+package com.sctgz.HkdApp.service.impl;
+
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+import spark.annotation.Auto;
+
+import com.sctgz.HkdApp.entity.CommodityInfo;
+import com.sctgz.HkdApp.service.ICommodityService;
+import com.sctgz.util.DateTimeUtil;
+
+import dbengine.dao.EntityDao;
+import dbengine.dao.SqlDao;
+import dbengine.util.Page;
+
+/**
+ * 
+ * 商品service实现
+ * @author hshzh
+ * @date 2017-2-28 下午2:52:49
+ */
+public class CommodityServiceImpl implements ICommodityService {
+
+	@Auto(name = SqlDao.class)
+	private SqlDao sqldao;
+
+	@Auto(name = EntityDao.class)
+	private EntityDao entitydao;
+
+	@Override
+	public boolean saveOrUpCommodity(String sourceId, boolean closeConn, CommodityInfo cmdtInfo) {
+		if (cmdtInfo == null) {
+			return false;
+		}
+		if (cmdtInfo.getId() == null) {
+			// 新增，设置uuid,创建时间
+			cmdtInfo.setCmdtUUID(UUID.randomUUID().toString());
+			cmdtInfo.setCmdtHot("2");
+			cmdtInfo.setCmdtCreateTime(DateTimeUtil.formatDateTime(new Date(), "yyyy-MM-dd HH:mm:ss"));
+			return entitydao.saveEntity(sourceId, cmdtInfo, closeConn);
+		}else{
+			//修改
+			return entitydao.updateEntity(sourceId, cmdtInfo, closeConn);
+		}
+	}
+
+	@Override
+	public CommodityInfo findCommodityInfo(String sourceId, boolean closeConn,String cmdtUUID) {
+		if (cmdtUUID == null || "".equals(cmdtUUID)) {
+			return null;
+		}
+		String sql = "select * from commodity_info where cmdtUUID = '" + cmdtUUID + "'";
+		return (CommodityInfo) sqldao.findEntityBySql(sourceId, sql, CommodityInfo.class, closeConn, null);
+	}
+
+	@Override
+	public List<CommodityInfo> findCommodityList(String sourceId, boolean closeConn,Page page, Map findMap) {
+		StringBuilder sql = new StringBuilder();
+		sql.append("select * from commodity_info where 1=1");
+		if(findMap!=null){
+			if(findMap.get("cmdtName") != null && !"".equals(findMap.get("cmdtName")) && !"null".equals(findMap.get("cmdtName"))){
+				sql.append(" and cmdtName like '%").append(findMap.get("cmdtName").toString().replace("'", "")).append("%'");
+			}
+			if(findMap.get("businessUUID") != null && !"".equals(findMap.get("businessUUID")) && !"null".equals(findMap.get("businessUUID"))){
+				sql.append(" and businessUUID = '").append(findMap.get("businessUUID").toString().replace("'", "")).append("'");
+			}
+			if(findMap.get("cmdtHot")!=null && !"".equals(findMap.get("cmdtHot"))){
+				sql.append(" and cmdtHot = '").append(findMap.get("cmdtHot").toString().replace("'", "")).append("'");
+			}
+			if(findMap.get("cmdtState")!=null && !"".equals(findMap.get("cmdtState"))){
+				sql.append(" and cmdtState = '").append(findMap.get("cmdtState").toString().replace("'", "")).append("'");
+			}
+		}
+		sql.append(" order by cmdtHot asc,cmdtCreateTime desc ");
+		if(page==null){
+			return sqldao.findListBySql(sourceId, sql.toString(), CommodityInfo.class, closeConn, null);
+		}else{
+			return sqldao.findPageByMysql(sourceId, sql.toString(), closeConn, CommodityInfo.class, page, null);
+		}
+	}
+	@Override
+	public List<CommodityInfo> findCommoditysList(String sourceId, boolean closeConn,Page page, String businessUUID) {
+		StringBuilder sql = new StringBuilder();
+		if(businessUUID == null || "".equals(businessUUID)){
+			return null;
+		}
+		sql.append("select * from commodity_info where businessUUID = '").append(businessUUID).append("'");
+		sql.append(" order by cmdtCreateTime desc ");
+		if(page==null){
+			return sqldao.findListBySql(sourceId, sql.toString(), CommodityInfo.class, closeConn, null);
+		}else{
+			return sqldao.findPageByMysql(sourceId, sql.toString(), closeConn, CommodityInfo.class, page, null);
+		}
+	}
+	
+	@Override
+	public List<Map> findCommodityHotList(String sourceId, boolean closeConn,Page page, Map findMap) {
+		StringBuilder sql = new StringBuilder();
+		sql.append("select c.*, b.* from commodity_info c left join business_info b on c.businessUUID = b.businessUUID where 1=1 ");
+		if(findMap!=null){
+			if(findMap.get("cmdtName") != null && !"".equals(findMap.get("cmdtName")) && !"null".equals(findMap.get("cmdtName"))){
+				sql.append(" and c.cmdtName like '%").append(findMap.get("cmdtName").toString().replace("'", "")).append("%'");
+			}
+			if(findMap.get("businessUUID") != null && !"".equals(findMap.get("businessUUID")) && !"null".equals(findMap.get("businessUUID"))){
+				sql.append(" and c.businessUUID = '").append(findMap.get("businessUUID").toString().replace("'", "")).append("'");
+			}
+			if(findMap.get("cmdtHot")!=null && !"".equals(findMap.get("cmdtHot"))){
+				sql.append(" and c.cmdtHot = '").append(findMap.get("cmdtHot").toString().replace("'", "")).append("'");
+			}
+			if(findMap.get("cmdtUUID")!=null && !"".equals(findMap.get("cmdtUUID"))){
+				sql.append(" and c.cmdtUUID = '").append(findMap.get("cmdtUUID").toString().replace("'", "")).append("'");
+			}
+		}
+		sql.append(" order by c.cmdtCreateTime desc ");
+		if(page==null){
+			return sqldao.findMapListBysql(sourceId, sql.toString(), closeConn, null);
+		}else{
+			return sqldao.findPageByMysql(sourceId, sql.toString(), closeConn, null, page, null);
+		}
+	}
+
+	@Override
+	public boolean delCommodity(String sourceId, boolean closeConn, String cmdtUUID) {
+		if(cmdtUUID==null || "".equals(cmdtUUID)){
+			return false;
+		}
+		String sql = "delete from commodity_info where cmdtUUID = '"+cmdtUUID.replace("'", "'")+"'";		
+		return sqldao.executeSql(sourceId, sql, closeConn, null);
+	}
+
+	@Override
+	public boolean upPriceOrStateOrCount(String sourceId, boolean closeConn, String cmdtUUID, Map upMap) {
+		if(cmdtUUID==null || "".equals(cmdtUUID) || upMap==null){
+			return false;
+		}
+		StringBuilder sql = new StringBuilder();
+		sql.append("update commodity_info set ");
+		boolean flag=false;//标记是否有需要更新的字段
+		if(upMap.get("cmdtPrice") != null && !"".equals(upMap.get("cmdtPrice"))){
+			sql.append("cmdtPrice=").append(upMap.get("cmdtPrice")+"");
+			flag=true;
+		}
+		if(upMap.get("cmdtState") != null && !"".equals(upMap.get("cmdtState"))){
+			sql.append(",cmdtState='").append(upMap.get("cmdtState")+"'");
+			flag=true;
+		}
+		if(upMap.get("cmdtCount") != null && !"".equals(upMap.get("cmdtCount"))){
+			sql.append(",cmdtCount=").append(upMap.get("cmdtCount")+"");
+			flag=true;
+		}
+		if(flag){
+			return sqldao.executeSql(sourceId, sql.toString(), closeConn, null);
+		}
+		return false;
+	}
+	/**
+	 * 后台添加或修改商品
+	 */
+	@Override
+	public boolean saveOrUpdate(String sourceId, boolean closeConn, CommodityInfo commodity) {
+		if (commodity == null) {
+			return false;
+		}
+		if (commodity.getId() == null) {
+			// 新增，设置uuid,创建时间
+			commodity.setCmdtUUID(UUID.randomUUID().toString());
+			commodity.setCmdtCreateTime(DateTimeUtil.formatDateTime(new Date(), "yyyy-MM-dd HH:mm:ss"));
+			return entitydao.saveEntity(sourceId, commodity, closeConn);
+		}else{
+			//修改
+			return entitydao.updateEntity(sourceId, commodity, closeConn);
+		}
+	}
+
+}

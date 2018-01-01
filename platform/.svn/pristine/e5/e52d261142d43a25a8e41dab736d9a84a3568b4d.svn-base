@@ -1,0 +1,229 @@
+package com.weixinpay;
+
+import java.io.StringReader;
+import java.math.BigDecimal;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.SortedMap;
+import java.util.TreeMap;
+import java.util.UUID;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import org.jdom.Document;
+import org.jdom.Element;
+import org.jdom.input.SAXBuilder;
+import org.xml.sax.InputSource;
+
+import spark.annotation.Auto;
+
+import com.sctgz.HkdApp.entity.OrderInfo;
+import com.sctgz.HkdApp.entity.VipConsumptionRecord;
+import com.sctgz.HkdApp.entity.VipRefMerchantsOrderNum;
+import com.sctgz.HkdApp.service.IVipConsumptionRecordService;
+import com.sctgz.HkdApp.service.IVipRefMerchantsOrderNumService;
+import com.sctgz.HkdApp.service.OrderInfoService;
+import com.sctgz.HkdApp.service.impl.OrderInfoServiceImpl;
+import com.sctgz.HkdApp.service.impl.VipConsumptionRecordServiceImpl;
+import com.sctgz.HkdApp.service.impl.VipRefMerchantsOrderNumServiceImpl;
+import com.sctgz.platform.entity.VipInfo;
+import com.sctgz.platform.service.IVipService;
+import com.sctgz.platform.service.impl.VipServiceImpl;
+import com.sctgz.util.DateTimeUtil;
+import com.sctgz.util.DateUtil;
+import com.sctgz.util.IpUtil;
+import com.sctgz.util.JsonUtil;
+import com.sctgz.util.ReadProperties;
+import com.sctgz.util.UpdateDataUtil;
+import com.tenpay.util.ConstantUtil;
+import com.weixinpay.GetWxOrderno;
+import com.weixinpay.MD5Util;
+import com.weixinpay.RequestHandler;
+import com.weixinpay.WeixinpayUtil;
+import com.weixinpay.entry.WxPayResult;
+
+/**
+ * 第三方微信支付管理
+ * @author hshzh
+ *
+ */
+public class WeixinPayUtils{
+	
+	
+	/**
+	 * 微信支付发起
+	 * @param sourceId
+	 * @param closeConn
+	 * @param request
+	 * @param response
+	 * @return
+	 * @throws Exception
+	 */
+	public static Map weixinAppPay(String sourceId, boolean closeConn, HttpServletRequest request, HttpServletResponse response) throws Exception {
+		Map result = new HashMap();
+		//微信分配的开发平台appid（企业号（corpid为此appId），必填 
+		String appid = "wx55f1846fe7999313";
+		//商品或支付单简要描述，必填
+		String body = request.getParameter("body");
+		//微信支付分配的商户号，必填
+	    String mch_id = "1400346502";
+	    //随机字符串，不长于32位。推荐随机数生成算法，必填
+	    String nonce_str = WeixinpayUtil.getNonceStr();
+	    //接收微信支付异步通知回调地址，必填
+	    String notify_url =  ReadProperties.getValue("weixinappnotifyurl");
+	    //商户系统内部的订单号,32个字符内、可包含字母, 其他说明见商户订单号，必填
+	    String out_trade_no = WeixinpayUtil.getNonceStr();
+	   
+	    //签名，详见签名生成算法，必填
+	    String sign = "";
+	    //APP和网页支付提交用户端ip，Native支付填调用微信支付API的机器IP，必填
+	    String spbill_create_ip = IpUtil.getIpAddr(request);
+	    
+	    //订单总金额，单位为分，必填
+	    String total_fee = WeixinpayUtil.getMoney(request.getParameter("total"));
+	    
+	    //取值如下：JSAPI，NATIVE，APP，详细说明见参数规定，必填
+	    String trade_type = "APP";
+	    
+	    //附加数据，在查询API和支付通知中原样返回，该字段主要用于商户携带订单的自定义数据，非必填
+	    String attach = "";
+	    SortedMap<String, String> packageParams = new TreeMap<String, String>();
+		packageParams.put("appid", appid);
+		packageParams.put("mch_id", mch_id);
+		packageParams.put("nonce_str", nonce_str);
+		packageParams.put("body", body);
+		packageParams.put("attach", attach);
+		packageParams.put("out_trade_no", out_trade_no);
+		packageParams.put("total_fee", total_fee);
+		packageParams.put("spbill_create_ip", spbill_create_ip);
+		packageParams.put("notify_url", notify_url);
+		packageParams.put("trade_type", trade_type);
+		
+		RequestHandler reqHandler = new RequestHandler(null, null);
+		reqHandler.init(appid, ConstantUtil.APP_SECRET, ConstantUtil.PARTNER_KEY);
+		
+		sign = reqHandler.createSign(packageParams);
+		String xml = "<xml>" + "<appid>" + appid + "</appid>" + "<mch_id>"
+				+ mch_id + "</mch_id>" + "<nonce_str>" + nonce_str
+				+ "</nonce_str>" + "<sign>" + sign + "</sign>"
+				+ "<body><![CDATA[" + body + "]]></body>" 
+				+ "<out_trade_no>" + out_trade_no
+				+ "</out_trade_no>" + "<attach>" + attach + "</attach>"
+				+ "<total_fee>" + total_fee + "</total_fee>"
+				+ "<spbill_create_ip>" + spbill_create_ip
+				+ "</spbill_create_ip>" + "<notify_url>" + notify_url
+				+ "</notify_url>" + "<trade_type>" + trade_type
+				+ "</trade_type>" + "</xml>";
+		
+		Map<String, String> map = null;
+	    String prepay_id = "";
+		try {
+			map = GetWxOrderno.getPayNo1("https://api.mch.weixin.qq.com/pay/unifiedorder", xml);
+			prepay_id = map.get("prepay_id");
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		
+		String timestamp = String.valueOf(System.currentTimeMillis() / 1000);
+		   
+	    String s="appid="+appid+"&noncestr="+nonce_str+"&package=Sign=WXPay"+"&partnerid="+
+	            mch_id+"&prepayid="+prepay_id+"&timestamp="+timestamp+"&key=" + ConstantUtil.PARTNER_KEY;
+	    String newSign = MD5Util.MD5Encode(s, "UTF-8").toUpperCase();
+	    
+	    SortedMap<String, String> m = new TreeMap<String, String>();
+	    if("SUCCESS".equals(map.get("return_code"))) {
+	    	m.put("retcode", "0");
+		    m.put("retmsg", "ok");
+		    m.put("appid", appid);
+		    m.put("partnerid", mch_id);
+		    m.put("prepayid", prepay_id);
+		    m.put("package", "Sign=WXPay");
+		    m.put("noncestr", nonce_str);
+		    m.put("timestamp", timestamp);
+		    m.put("sign", newSign);
+	    }
+	    result.put("status", "1");
+	    result.put("return_code", map.get("return_code"));
+	    result.put("msg", "订单获取成功");
+	    result.put("order", m);
+		return result;
+	}
+	
+	/**
+	 * 微信支付回调
+	 * front/weixinNotify/notify",true,"jdbcwrite"
+	 * @param request
+	 * @param response
+	 * @return
+	 * @throws Exception
+	 */
+	public static WxPayResult weixinNotify(String sourceId, boolean closeConn,HttpServletRequest request, HttpServletResponse response) throws Exception {
+		//把如下代码贴到的你的处理回调的servlet 或者.do 中即可明白回调操作
+		//示例报文
+//		String xml = "<xml><appid><![CDATA[wxb4dc385f953b356e]]></appid><bank_type><![CDATA[CCB_CREDIT]]></bank_type><cash_fee><![CDATA[1]]></cash_fee><fee_type><![CDATA[CNY]]></fee_type><is_subscribe><![CDATA[Y]]></is_subscribe><mch_id><![CDATA[1228442802]]></mch_id><nonce_str><![CDATA[1002477130]]></nonce_str><openid><![CDATA[o-HREuJzRr3moMvv990VdfnQ8x4k]]></openid><out_trade_no><![CDATA[1000000000051249]]></out_trade_no><result_code><![CDATA[SUCCESS]]></result_code><return_code><![CDATA[SUCCESS]]></return_code><sign><![CDATA[1269E03E43F2B8C388A414EDAE185CEE]]></sign><time_end><![CDATA[20150324100405]]></time_end><total_fee>1</total_fee><trade_type><![CDATA[JSAPI]]></trade_type><transaction_id><![CDATA[1009530574201503240036299496]]></transaction_id></xml>";
+		String inputLine;
+		String notityXml = "";
+		try {
+			while ((inputLine = request.getReader().readLine()) != null) {
+				notityXml += inputLine;
+			}
+			request.getReader().close();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		Map m = parseXmlToList2(notityXml);
+		WxPayResult wpr = new WxPayResult();
+		wpr.setAppid(m.get("appid").toString());
+		wpr.setBankType(m.get("bank_type").toString());
+		wpr.setCashFee(m.get("cash_fee").toString());
+		wpr.setFeeType(m.get("fee_type").toString());
+		wpr.setIsSubscribe(m.get("is_subscribe").toString());
+		wpr.setMchId(m.get("mch_id").toString());
+		wpr.setNonceStr(m.get("nonce_str").toString());
+		wpr.setOpenid(m.get("openid").toString());
+		wpr.setOutTradeNo(m.get("out_trade_no").toString());
+		wpr.setResultCode(m.get("result_code").toString());
+		wpr.setReturnCode(m.get("return_code").toString());
+		wpr.setSign(m.get("sign").toString());
+		wpr.setTimeEnd(m.get("time_end").toString());
+		wpr.setTotalFee(m.get("total_fee").toString());
+		wpr.setTradeType(m.get("trade_type").toString());
+		wpr.setTransactionId(m.get("transaction_id").toString());
+		
+		return wpr;
+	}
+	/**
+	 * description: 解析微信通知xml
+	 * 
+	 * @param xml
+	 * @return
+	 * @author ex_yangxiaoyi
+	 * @see
+	 */
+	@SuppressWarnings({ "unused", "rawtypes", "unchecked" })
+	private static Map parseXmlToList2(String xml) {
+		Map retMap = new HashMap();
+		try {
+			StringReader read = new StringReader(xml);
+			// 创建新的输入源SAX 解析器将使用 InputSource 对象来确定如何读取 XML 输入
+			InputSource source = new InputSource(read);
+			// 创建一个新的SAXBuilder
+			SAXBuilder sb = new SAXBuilder();
+			// 通过输入源构造一个Document
+			Document doc = (Document) sb.build(source);
+			Element root = doc.getRootElement();// 指向根节点
+			List<Element> es = root.getChildren();
+			if (es != null && es.size() != 0) {
+				for (Element element : es) {
+					retMap.put(element.getName(), element.getValue());
+				}
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return retMap;
+	}
+}

@@ -1,0 +1,189 @@
+package com.sctgz.HkdApp.entity;
+
+import dbengine.annotation.Table;
+import dbengine.annotation.TableField;
+
+/**
+ * 评价信息
+ * @author chengyz
+ *
+ */
+@Table(tableName="evaluate_info")
+public class EvaluateInfo {
+	
+	@TableField(isPKey=true,isNotNull=true,isAutoIncrement=true,comment="主键Id,自动增长")
+	private Long id;
+	
+	@TableField(fieldSize=36,isNotNull=true,comment="地址uuid,全球唯一标识")
+	private String evaluateUUID;
+
+	@TableField(fieldSize=36,isNotNull=true,comment="评价者的vipUUID")
+	private String vipUUID;
+	
+	@TableField(fieldSize=36,isNotNull=true,comment="被评价者的vipUUID")
+	private String getUUID;
+	
+	@TableField(fieldSize=30,comment="被评价者名称")
+	private String getVipName;
+	
+	@TableField(fieldSize=36,isNotNull=true,comment="订单的UUID")
+	private String orderUUID;
+	
+	@TableField(fieldSize=500,isNotNull=true,comment="评价内容")
+	private String content;
+	
+	@TableField(fieldSize=20,isNotNull=true,comment="评价时间")
+	private String evaluateTime;
+	
+	@TableField(fieldSize=100,comment="评价的图片一")
+	private String img1;
+	@TableField(fieldSize=100,comment="评价的图片二")
+	private String img2;
+	@TableField(fieldSize=100,comment="评价的图片三")
+	private String img3;
+	@TableField(fieldSize=100,comment="评价的图片四")
+	private String img4;
+	
+	@TableField(fieldSize=2,comment="评价星级")
+	private String starGrade;
+	
+	@TableField(fieldSize=1,comment="标志是我评价别人还是别人评价我，1则是我评价别人，2则是别人评价我")
+	private String flag;
+
+	@TableField(fieldSize=2,comment="订单类型,1为帮我买、2为帮我送、3为帮我取")
+	private String orderType;
+	
+	@TableField(fieldSize=30,comment="评价者名称")
+	private String evaluateName;
+	
+	public String getFlag() {
+		return flag;
+	}
+
+	public void setFlag(String flag) {
+		this.flag = flag;
+	}
+
+
+	public String getGetVipName() {
+		return getVipName;
+	}
+
+	public void setGetVipName(String getVipName) {
+		this.getVipName = getVipName;
+	}
+
+	public String getEvaluateName() {
+		return evaluateName;
+	}
+
+	public void setEvaluateName(String evaluateName) {
+		this.evaluateName = evaluateName;
+	}
+
+	public String getOrderType() {
+		return orderType;
+	}
+
+	public void setOrderType(String orderType) {
+		this.orderType = orderType;
+	}
+
+	public Long getId() {
+		return id;
+	}
+
+	public void setId(Long id) {
+		this.id = id;
+	}
+
+	public String getEvaluateUUID() {
+		return evaluateUUID;
+	}
+
+	public void setEvaluateUUID(String evaluateUUID) {
+		this.evaluateUUID = evaluateUUID;
+	}
+
+	public String getVipUUID() {
+		return vipUUID;
+	}
+
+	public void setVipUUID(String vipUUID) {
+		this.vipUUID = vipUUID;
+	}
+
+	public String getGetUUID() {
+		return getUUID;
+	}
+
+	public void setGetUUID(String getUUID) {
+		this.getUUID = getUUID;
+	}
+
+	public String getOrderUUID() {
+		return orderUUID;
+	}
+
+	public void setOrderUUID(String orderUUID) {
+		this.orderUUID = orderUUID;
+	}
+
+	public String getContent() {
+		return content;
+	}
+
+	public void setContent(String content) {
+		this.content = content;
+	}
+
+	public String getEvaluateTime() {
+		return evaluateTime;
+	}
+
+	public void setEvaluateTime(String evaluateTime) {
+		this.evaluateTime = evaluateTime;
+	}
+
+	public String getImg1() {
+		return img1;
+	}
+
+	public void setImg1(String img1) {
+		this.img1 = img1;
+	}
+
+	public String getImg2() {
+		return img2;
+	}
+
+	public void setImg2(String img2) {
+		this.img2 = img2;
+	}
+
+	public String getImg3() {
+		return img3;
+	}
+
+	public void setImg3(String img3) {
+		this.img3 = img3;
+	}
+
+	public String getImg4() {
+		return img4;
+	}
+
+	public void setImg4(String img4) {
+		this.img4 = img4;
+	}
+
+	public String getStarGrade() {
+		return starGrade;
+	}
+
+	public void setStarGrade(String starGrade) {
+		this.starGrade = starGrade;
+	}
+
+
+}

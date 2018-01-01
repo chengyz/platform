@@ -1,0 +1,93 @@
+package com.platform.manage;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import spark.annotation.Auto;
+
+import com.mysql.jdbc.StringUtils;
+import com.platform.entity.MenuInfo;
+import com.platform.entity.MenuUnit;
+import com.platform.service.IMenuUnitService;
+import com.platform.service.impl.MenuUnitServiceImpl;
+import com.util.JsonUtil;
+
+public class MenuUnitMng {
+
+	@Auto(name=MenuUnitServiceImpl.class)
+	private IMenuUnitService menuUnitService;
+	
+	public String addPermissionForUnit(String sourceId, boolean closeConn, HttpServletRequest request, HttpServletResponse response) {
+		String unitUUID = request.getParameter("unitUUID");
+		String menuUUIDS = request.getParameter("menuUUIDS");//选择的菜单参数
+		//UserInfo userinfo = (UserInfo)request.getSession().getAttribute("userinfo");
+		Map<String, String> map = new HashMap<String, String>();
+//		if(userinfo==null){//用户未登入
+//			map.put("status", "0");
+//			map.put("msg", "用户未登录");
+//			return JsonUtil.ObjToJson(map);
+//		}
+		//修改当前用户权限菜单
+		//删除原菜单数据先
+		if (!StringUtils.isNullOrEmpty(unitUUID)){
+			menuUnitService.deleteMenuUnit(sourceId, closeConn, null, unitUUID);
+			String[] menusList = menuUUIDS.split(",");
+			List<MenuUnit> menuList = new ArrayList<MenuUnit>();
+			for (String menuUUID : menusList) {
+				MenuUnit menuRole = new MenuUnit();
+				menuRole.setUnitUUID(unitUUID);
+				menuRole.setMenuUUID(menuUUID);
+				menuList.add(menuRole);
+			}
+			if (menuUnitService.saveMenuUnit(sourceId, closeConn, menuList)){
+				map.put("status", "1");
+				map.put("msg", "权限分配成功");
+				return JsonUtil.ObjToJson(map);
+			}else{
+				map.put("status", "0");
+				map.put("msg", "权限分配失败");
+				return JsonUtil.ObjToJson(map);
+			}
+		}else{
+			map.put("status", "0");
+			map.put("msg", "权限分配失败");
+			return JsonUtil.ObjToJson(map);
+		}
+	}
+	
+	public String findUnitPermission(String sourceId, boolean closeConn, HttpServletRequest request, HttpServletResponse response){
+		String unitUUID = request.getParameter("unitUUID");
+		if (!StringUtils.isNullOrEmpty(unitUUID)){
+			List<MenuInfo> menuList =  menuUnitService.findMenuByUnitUUID(sourceId, closeConn, unitUUID);
+			if (menuList!=null){
+				return JsonUtil.ObjToJson(menuList);
+			}else{
+				return JsonUtil.ObjToJson("[]");
+			}
+		}else{
+			return JsonUtil.ObjToJson("[]");
+		}
+		
+	}
+	
+	public String findAllMenuItemToAddPermission(String sourceId, boolean closeConn, HttpServletRequest request, HttpServletResponse response){
+		String unitUUID = request.getParameter("unitUUID");
+		if (!StringUtils.isNullOrEmpty(unitUUID)){
+			@SuppressWarnings("rawtypes")
+			List<Map> listMap = menuUnitService.findAllMenuItemForUnit(sourceId, closeConn, unitUUID);
+			if (listMap!=null){
+				return JsonUtil.ObjToJson(listMap);
+			}else{
+				return JsonUtil.ObjToJson("[]");
+			}
+		}else{
+			return JsonUtil.ObjToJson("[]");
+		}
+	}
+	
+}

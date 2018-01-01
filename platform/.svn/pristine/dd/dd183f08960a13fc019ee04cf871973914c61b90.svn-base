@@ -1,0 +1,58 @@
+package com.sctgz.HkdApp.service;
+
+import java.util.List;
+import java.util.Map;
+
+import com.sctgz.HkdApp.entity.BusinessInfo;
+import com.sctgz.HkdApp.entity.CollectBusiness;
+
+import dbengine.util.Page;
+
+/**
+ * 会员收藏商家的service接口
+ * @author chengyz
+ *
+ */
+public interface CollectBusinessService {
+	/**
+	 * 会员收藏商家
+	 * @param sourceId
+	 * @param closeConn
+	 * @param map
+	 * @return
+	 */
+	public boolean saveCollectBusiness(String sourceId,boolean closeConn,CollectBusiness collectBusiness);
+	/**
+	 * 会员取消对商家的收藏
+	 * @param sourceId
+	 * @param closeConn
+	 * @param vipUUID
+	 * @return
+	 */
+	public boolean cancelCollectBusiness(String sourceId,boolean closeConn,String vipUUID,String businessUUID);
+	/**
+	 * 查询会员收藏的商家列表
+	 * @param sourceId
+	 * @param closeConn
+	 * @param vipUUID
+	 * @return
+	 */
+	public List<Map<String,String>> findBusinessList(String sourceId,boolean closeConn,Page page,Map<String,String> findMap);
+	/**
+	 * 查询商家
+	 * @param sourceId
+	 * @param closeConn
+	 * @param businessUUID
+	 * @return
+	 */
+	public BusinessInfo findBusiness(String sourceId,boolean closeConn,String businessUUID);
+	/**
+	 * 查询收藏的商家
+	 * @param sourceId
+	 * @param closeConn
+	 * @param vipUUID
+	 * @return
+	 */
+	public CollectBusiness findCollectBusiness(String sourceId,boolean closeConn,String vipUUID,String businessUUID);
+	
+}

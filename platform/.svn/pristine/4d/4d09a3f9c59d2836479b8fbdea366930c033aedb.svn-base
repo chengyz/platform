@@ -1,0 +1,158 @@
+package com.sctgz.HkdApp.manage;
+
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import spark.annotation.Auto;
+
+import com.sctgz.HkdApp.entity.OrderPeople;
+import com.sctgz.HkdApp.service.OrderInfoService;
+import com.sctgz.HkdApp.service.OrderPeopleService;
+import com.sctgz.HkdApp.service.impl.OrderInfoServiceImpl;
+import com.sctgz.HkdApp.service.impl.OrderPeopleServiceImpl;
+import com.sctgz.platform.entity.VipInfo;
+import com.sctgz.platform.service.IVipService;
+import com.sctgz.platform.service.impl.VipServiceImpl;
+import com.sctgz.util.DateTimeUtil;
+import com.sctgz.util.DateUtil;
+import com.sctgz.util.JsonUtil;
+import com.sctgz.util.ReqToEntityUtil;
+
+/**
+ * 抢单的manage
+ * @author chengyz
+ *
+ */
+public class OrderPeopleMng {
+	
+	@Auto(name=OrderPeopleServiceImpl.class)
+	private OrderPeopleService orderPeopleService;
+	
+	@Auto(name=OrderInfoServiceImpl.class)
+	private OrderInfoService orderInfoService;
+	
+	@Auto(name=VipServiceImpl.class)
+	private IVipService vipService;
+	
+	@Auto(name=LocationMng.class)
+	private LocationMng locationMng;
+	
+	@Auto(name=MessageMng.class)
+	private MessageMng msgMng;
+	
+	/**
+	 * 保存抢单信息
+	 * @param sourceId
+	 * @param closeConn
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	public String saveOrderPeople(String sourceId,boolean closeConn,HttpServletRequest request,HttpServletResponse response){
+		OrderPeople orderPeople = (OrderPeople)ReqToEntityUtil.reqToEntity(request, OrderPeople.class);
+		Map<String,String> map = new HashMap<String,String>();
+		if(orderPeople.getGetUUID() == null || "".equals(orderPeople.getGetUUID()) || "null".equals(orderPeople.getGetUUID()) || "undefined".equals(orderPeople.getGetUUID())){
+			map.put("status", "-9");
+			map.put("msg", "请登录之后再抢单");
+			return JsonUtil.ObjToJson(map);
+		}
+		if(orderPeople.getVipUUID().equals(orderPeople.getGetUUID())){
+			map.put("status", "-8");
+			map.put("msg", "不能抢自己派的单");
+			return JsonUtil.ObjToJson(map);
+		}
+		if("".equals(orderPeople.getVipUUID()) || orderPeople.getVipUUID() == null || "null".equals(orderPeople.getVipUUID()) || "undefined".equals(orderPeople.getVipUUID())){
+			map.put("status", "-10");
+			map.put("msg", "未获取到派单者信息，不能抢单");
+			return JsonUtil.ObjToJson(map);
+		}
+		if("".equals(orderPeople.getOrderUUID()) || orderPeople.getOrderUUID() == null || "null".equals(orderPeople.getOrderUUID()) || "undefined".equals(orderPeople.getOrderUUID())){
+			map.put("status", "-11");
+			map.put("msg", "未获取到订单信息，不能抢单");
+			return JsonUtil.ObjToJson(map);
+		}
+		if("".equals(orderPeople.getOrderType()) || orderPeople.getOrderType() == null || "null".equals(orderPeople.getOrderType()) || "undefined".equals(orderPeople.getOrderType())){
+			map.put("status", "-12");
+			map.put("msg", "未获取到订单信息，不能抢单");
+			return JsonUtil.ObjToJson(map);
+		}
+		OrderPeople order = orderPeopleService.findOrderPeople(sourceId, closeConn, orderPeople.getOrderUUID());//判断该订单是否已经被抢
+		
+		VipInfo vip = vipService.findVipInfoByUUID(sourceId, closeConn, orderPeople.getGetUUID());//查询当前跑客的状态
+		
+		map.put("vipStatus", vip.getVipStatus());
+		map.put("certificateStatus", vip.getCertificateStatus());
+		if(order == null){
+			if("2".equals(vip.getVipStatus())){
+				map.put("status", "-2");
+				map.put("msg", "当前用户已经被注销");
+				return JsonUtil.ObjToJson(map);
+			}
+			if("3".equals(vip.getVipStatus())){
+				map.put("status", "-3");
+				map.put("msg", "当前用户已经被停用");
+				return JsonUtil.ObjToJson(map);	
+			}
+			if("4".equals(vip.getVipStatus())){
+				map.put("status", "-4");
+				map.put("msg", "你有未完成的订单");
+				return JsonUtil.ObjToJson(map);	
+			}
+			if("1".equals(vip.getCertificateStatus())){
+				map.put("status", "-6");
+				map.put("msg", "实名认证失败");
+				return JsonUtil.ObjToJson(map);	
+			}
+			if("2".equals(vip.getCertificateStatus())){
+				map.put("status", "-7");
+				map.put("msg", "实名认证审核中，不能接单");
+				return JsonUtil.ObjToJson(map);	
+			}
+			if("4".equals(vip.getCertificateStatus())){
+				map.put("status", "-7");
+				map.put("msg", "你未进行实名认证");
+				return JsonUtil.ObjToJson(map);	
+			}
+			orderPeople.setLootTime(DateTimeUtil.formatDate((new Date()), "yyyy-MM-dd HH:mm:ss"));
+			orderPeople.setRelateUUID(UUID.randomUUID().toString());
+			if(orderPeopleService.saveOrderPeople(sourceId, closeConn, orderPeople)){
+				orderInfoService.updateOrderStatus(sourceId, closeConn, "4", orderPeople.getOrderUUID());
+				vipService.updateVipStatus(sourceId, closeConn, vip.getVipUUID(), "4");//跑客抢到单之后其状态改为4（接单中）
+				map.put("status", "1");
+				map.put("msg","抢单成功");
+				map.put("orderUUID", orderPeople.getOrderUUID());
+				map.put("lootTime", orderPeople.getLootTime());
+				//订单状态为完成，清空待处理订单缓存
+				locationMng.delUntreatedOrderCache(orderPeople.getOrderUUID(), closeConn, orderPeople.getOrderUUID());
+				//添加订单消息缓存
+				//msgMap  msgUUID,msgStatus(消息状态:0待处理，1已处理),msgType(消息类型：1一般消息，2广播消息，3点对点消息)，msgModule(消息模块：01发布订单消息,02抢单消息)
+				//msgContent(消息内容),msgSendUUID(消息发送方uuid),msgRecUUID(消息接收方uuid),msgOrderUUID（订单号）msgTime（消息生成时间）
+				Map msgMap = new HashMap();
+				msgMap.put("msgUUID", UUID.randomUUID().toString());//uuid
+				msgMap.put("msgStatus", "0");
+				msgMap.put("msgType", "3");
+				msgMap.put("msgModule", "02");
+				msgMap.put("msgContent", "你的订单被抢了");
+				msgMap.put("msgSendUUID", orderPeople.getVipUUID());
+				msgMap.put("msgRecUUID", orderPeople.getGetUUID());
+				msgMap.put("msgOrderUUID", orderPeople.getOrderUUID());
+				msgMap.put("msgTime", DateUtil.formatDateTime(new Date()));
+				msgMng.addMessage(sourceId, closeConn, msgMap);
+				return JsonUtil.ObjToJson(map);
+			}else{
+				map.put("status","-5");
+				map.put("msg", "失败");
+				return JsonUtil.ObjToJson(map);
+			}
+		}else{
+			map.put("status", "-1");
+			map.put("msg", "该订单已经被抢");
+			return JsonUtil.ObjToJson(map);
+		}
+	}
+}

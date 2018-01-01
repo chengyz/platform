@@ -1,0 +1,62 @@
+package com.sctgz.HkdApp.action;
+
+import spark.Request;
+import spark.Response;
+import spark.Route;
+import spark.Spark;
+import spark.annotation.Auto;
+import spark.servlet.ISparkApplication;
+
+import com.sctgz.HkdApp.manage.WithdrawCashMng;
+/**
+ * 会员提现的action
+ * @author chengyz
+ *
+ */
+public class WithdrawCashAction implements ISparkApplication {
+	@Auto(name=WithdrawCashMng.class)
+	private WithdrawCashMng withdrawCashMng;
+	@Override
+	public void run() {
+		/**
+		 * 查询会员提现记录列表
+		 */
+		Spark.post(new Route("/hkdapp/withdrawCash/list",true,"jdbcread"){
+			@Override
+			public Object handle(Request request,Response response)throws Exception{
+				return withdrawCashMng.findWithdrawCashList("jdbcread", false,request.raw(), response.raw());
+			}
+		});
+
+		/**
+		 * 查询会员个人提现记录列表
+		 */
+		Spark.post(new Route("/hkdapp/withdrawCash/myWithdrawCash",true,"jdbcread"){
+			@Override
+			public Object handle(Request request,Response response)throws Exception{
+				return withdrawCashMng.findMyWithdrawCashList("jdbcread", false,request.raw(), response.raw());
+			}
+		});
+		
+		/**
+		 * 会员提现申请
+		 */
+		Spark.post(new Route("/hkdapp/withdrawCash/apply",true,"jdbcwrite"){
+			@Override
+			public Object handle(Request request,Response response)throws Exception{
+				return withdrawCashMng.saveOrUpWithdrawCash("jdbcwrite", false,request.raw(), response.raw());
+			}
+		});
+		
+		/**
+		 * 更新会员提现状态
+		 */
+		Spark.post(new Route("/hkdapp/withdrawCash/updateStatus",true,"jdbcwrite"){
+			@Override
+			public Object handle(Request request,Response response)throws Exception{
+				return withdrawCashMng.updateWithdrawCashStatus("jdbcwrite", false,request.raw(), response.raw());
+			}
+		});
+	}
+
+}

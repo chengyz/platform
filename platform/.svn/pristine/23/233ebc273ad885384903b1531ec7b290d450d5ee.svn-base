@@ -1,0 +1,65 @@
+/**
+ * 
+ */
+package com.sctgz.platform.action;
+
+import spark.Request;
+import spark.Response;
+import spark.Route;
+import spark.Spark;
+import spark.annotation.Auto;
+import spark.servlet.ISparkApplication;
+
+import com.sctgz.platform.manage.AppInfoMng;
+
+/**
+ * 各种app的action
+ * @author chengyz
+ *
+ */
+public class AppInfoAction implements ISparkApplication {
+	@Auto(name=AppInfoMng.class)
+	private AppInfoMng appInfoMng;
+
+	@Override
+	public void run() {
+		/**
+		 * 查询APP列表
+		 */
+		Spark.post(new Route("/hkdapp/appInfo/findAppInfoList",true,"jdbcread") {			
+			@Override
+			public Object handle(Request request, Response response) throws Exception {
+				return appInfoMng.findAppInfoList("jdbcread",false,request.raw(), response.raw());
+			}
+		});
+		
+		/**
+		 * 添加或修改APP版本信息
+		 */
+		Spark.post(new Route("/hkdapp/appInfo/addOrUpAppInfo",true,"jdbcwrite") {			
+			@Override
+			public Object handle(Request request, Response response) throws Exception {
+				return appInfoMng.saveOrUpAppInfo("jdbcwrite",false,request.raw(), response.raw());
+			}
+		});
+		/**
+		 * 上传app
+		 */
+		Spark.post(new Route("/hkdapp/appInfo/uploadApp",true,"jdbcread") {		
+			@Override
+			public Object handle(Request request, Response response) throws Exception {
+				return appInfoMng.uploadApp(request.raw(), response.raw());
+			}
+		});
+		/**
+		 * 删除APP版本信息
+		 */
+		Spark.post(new Route("/hkdapp/appInfo/deleteApp",true,"jdbcwrite") {			
+			@Override
+			public Object handle(Request request, Response response) throws Exception {
+				return appInfoMng.deleteAppInfo("jdbcwrite",false,request.raw(), response.raw());
+			}
+		});
+	}
+
+}

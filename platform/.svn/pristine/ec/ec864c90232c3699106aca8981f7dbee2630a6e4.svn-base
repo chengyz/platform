@@ -1,0 +1,19 @@
+package com.sctgz.HkdApp.action;
+
+import spark.annotation.Auto;
+import spark.servlet.ISparkApplication;
+
+import com.sctgz.HkdApp.manage.TimedTaskMng;
+/**
+ * 订单任务的action
+ * @author chengyz
+ *
+ */
+public class NoGetOrderTimedAction implements ISparkApplication{
+	@Auto(name=TimedTaskMng.class)
+	private TimedTaskMng timedTaskMng;
+	@Override
+	public void run() {
+		timedTaskMng.updateNoGetOrderStatus();//未被抢的订单超时改为失效
+	}
+}

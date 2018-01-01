@@ -1,0 +1,92 @@
+package com.test.entity;
+
+import java.math.BigDecimal;
+
+import dbengine.annotation.Table;
+import dbengine.annotation.TableField;
+
+/**
+ * 会员收入记录
+ * @author chengyz
+ *
+ */
+@Table(tableName = "vip_earn_record")
+public class VipEarnRecord {
+	@TableField(isPKey=true,isAutoIncrement=true,comment="主键，自动增长!")
+	private Long id;
+	@TableField(fieldSize=36,comment="uuid,全局唯一")
+	private String recordUUID;
+	@TableField(fieldSize=36,comment="会员uuid")
+	private String vipUUID;
+	@TableField(fieldSize=20,comment="会员名称")
+	private String vipName;
+	@TableField(fieldSize=11,comment="会员手机号")
+	private String vipMobilePhone;
+	@TableField(fieldSize=10,comment="收入金额")
+	private BigDecimal earnMoney;
+	@TableField(fieldSize=20,comment="收钱的时间")
+	private String earnTime;
+	@TableField(fieldSize=36,comment="订单UUID")
+	private String orderUUID;
+	@TableField(fieldSize=1000,comment="收入详情")
+	private String earnDetails;
+	
+	public Long getId() {
+		return id;
+	}
+	public void setId(Long id) {
+		this.id = id;
+	}
+	
+	public BigDecimal getEarnMoney() {
+		return earnMoney;
+	}
+	public void setEarnMoney(BigDecimal earnMoney) {
+		this.earnMoney = earnMoney;
+	}
+	
+	public String getOrderUUID() {
+		return orderUUID;
+	}
+	public void setOrderUUID(String orderUUID) {
+		this.orderUUID = orderUUID;
+	}
+	
+	public String getRecordUUID() {
+		return recordUUID;
+	}
+	public void setRecordUUID(String recordUUID) {
+		this.recordUUID = recordUUID;
+	}
+	public String getVipUUID() {
+		return vipUUID;
+	}
+	public void setVipUUID(String vipUUID) {
+		this.vipUUID = vipUUID;
+	}
+	public String getVipName() {
+		return vipName;
+	}
+	public void setVipName(String vipName) {
+		this.vipName = vipName;
+	}
+	public String getVipMobilePhone() {
+		return vipMobilePhone;
+	}
+	public void setVipMobilePhone(String vipMobilePhone) {
+		this.vipMobilePhone = vipMobilePhone;
+	}
+	public String getEarnTime() {
+		return earnTime;
+	}
+	public void setEarnTime(String earnTime) {
+		this.earnTime = earnTime;
+	}
+	public String getEarnDetails() {
+		return earnDetails;
+	}
+	public void setEarnDetails(String earnDetails) {
+		this.earnDetails = earnDetails;
+	}
+	
+}

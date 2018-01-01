@@ -1,0 +1,91 @@
+package com.sctgz.HkdApp.action;
+
+import spark.Request;
+import spark.Response;
+import spark.Route;
+import spark.Spark;
+import spark.annotation.Auto;
+import spark.servlet.ISparkApplication;
+
+import com.sctgz.HkdApp.manage.OrderInfoMng;
+/**
+ * 帮我买、帮我送、帮我取   订单的action
+ * @author chengyz
+ *
+ */
+public class OrderInfoAction implements ISparkApplication {
+	
+	@Auto(name=OrderInfoMng.class)
+	private OrderInfoMng orderInfoMng;
+	@Override
+	public void run() {
+		/**
+		 * 查询单个订单
+		 */
+		Spark.post(new Route("/hkdapp/orderInfo/findOrder",true,"jdbcread"){
+			@Override
+			public Object handle(Request request,Response response) throws Exception{
+				return orderInfoMng.findOrder("jdbcread",false,request.raw(),response.raw());
+			}
+		});
+
+		/**
+		 * 查询派单订单列表
+		 */
+		Spark.post(new Route("/hkdapp/orderInfo/findOrderList",true,"jdbcread"){
+			@Override
+			public Object handle(Request request,Response response) throws Exception{
+				return orderInfoMng.findOrderList("jdbcread", false, request.raw(), response.raw());
+			}
+			
+		});
+		/**
+		 * 删除订单
+		 */
+		Spark.post(new Route("/hkdapp/orderInfo/deleteOrder",true,"jdbcwrite"){
+			@Override
+			public Object handle(Request request,Response response) throws Exception{
+				return orderInfoMng.deleteOrder("jdbcwrite", false, request.raw(), response.raw());
+			}
+		});
+		/**
+		 * 保存或修改订单
+		 */
+		Spark.post(new Route("/hkdapp/orderInfo/saveOrUpOrder",true,"jdbcwrite"){
+			@Override
+			public Object handle(Request request,Response response) throws Exception{
+				return orderInfoMng.saveOrUpOrder("jdbcwrite", false, request.raw(), response.raw());
+			}
+		});
+		/**
+		 * 修改订单状态
+		 */
+		Spark.post(new Route("/hkdapp/orderInfo/updateOrderStatus",true,"jdbcwrite"){
+			@Override
+			public Object handle(Request request,Response response) throws Exception{
+				return orderInfoMng.updateOrderStatus("jdbcwrite", false, request.raw(), response.raw());
+			}
+		});
+		/**
+		 * 查询接单订单列表
+		 */
+		Spark.post(new Route("/hkdapp/orderInfo/findGetOrderList",true,"jdbcread"){
+			@Override
+			public Object handle(Request request,Response response) throws Exception{
+				return orderInfoMng.findGetOrderList("jdbcread", false, request.raw(), response.raw());
+			}
+			
+		});
+		/**
+		 * 查询收货确认码
+		 */
+		Spark.post(new Route("/hkdapp/orderInfo/findOrderPasscode",true,"jdbcread"){
+			@Override
+			public Object handle(Request request,Response response) throws Exception{
+				return orderInfoMng.findOrderPasscode("jdbcread", false, request.raw(), response.raw());
+			}
+			
+		});
+	}
+
+}

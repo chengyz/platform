@@ -1,0 +1,347 @@
+<%@ page language="java" import="java.util.*" pageEncoding="UTF-8"%>
+<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
+<%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions"%>
+<%@ taglib prefix="fmt" uri="http://java.sun.com/jstl/fmt_rt"%>
+<%
+String path = request.getContextPath();
+String basePath = request.getScheme()+"://"+request.getServerName()+":"+request.getServerPort()+path+"/";
+String permissionStr = "nmqedu";
+%>
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+  <head>
+    <base href="<%=basePath%>">
+    
+    <title>App管理平台管理</title>
+    
+	<meta http-equiv="pragma" content="no-cache">
+	<meta http-equiv="cache-control" content="no-cache">
+	<meta http-equiv="expires" content="0">    
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+	<meta name="renderer" content="webkit">
+	<!--
+	<link rel="stylesheet" type="text/css" href="styles.css">
+	-->
+	<link rel="stylesheet" href="static/css/pintuer.css">
+	<link rel="stylesheet" href="static/css/fixedPintuer.css">
+	<link rel="stylesheet" href="static/css/admin.css">
+	<link type="image/x-icon" href="static/images/logo.png" rel="shortcut icon" />
+	<link href="static/images/favicon.ico" rel="bookmark icon" />
+
+  </head>
+  
+  <body>
+		<!--顶部-->
+		<div class="layout bg-main bg-inverse fixed" style="z-index: 9;">
+			<div class="container-layout">
+				<div class="navbar">
+					<!--
+                    	描述：LOGO及系统名称
+                    -->
+					<div class="navbar-head">
+						<button class="button icon-navicon" data-target="#navbar1">
+						</button>
+						<a href="admin/index.jsp">
+							<img src="static/css/images/logo.jpg" width="30px" height="30px" />
+							<strong class="text-big">App管理平台管理</strong></a>
+					</div>
+					<!--
+                    	描述：导航
+                    -->
+					<div class="navbar-body nav-navicon" id="navbar1">
+						<ul class="nav nav-inline nav-menu">
+							<li><a class="icon-cog" id="item001" href="javascript:void(0);">&nbsp;系统管理<span class="arrow"></span></a>
+								<ul class="drop-menu">
+									<li><a href="javascript:loadPageContent('mainContent','pageNav','PlatformAdmin/menuMng/menuList.jsp','系统管理','权限管理')">权限管理</a></li>
+									<li><a href="javascript:loadPageContent('mainContent','pageNav','PlatformAdmin/userMng/userList.jsp','系统管理','用户管理')">用户管理</a></li>
+									<li><a href="javascript:loadPageContent('mainContent','pageNav','PlatformAdmin/roleMng/roleList.jsp','系统管理','角色管理')">角色管理</a></li>
+									<li><a href="javascript:loadPageContent('mainContent','pageNav','PlatformAdmin/vipMng/vipList.jsp','系统管理','会员管理')">会员管理</a></li>
+									<li><a href="javascript:loadPageContent('mainContent','pageNav','PlatformAdmin/tradeMng/tradeList.jsp','系统管理','行业管理')">行业管理</a></li>
+									<li><a href="javascript:loadPageContent('mainContent','pageNav','PlatformAdmin/unitMng/unitList.jsp','系统管理','单位管理')">单位管理</a></li>
+									<li><a href="javascript:loadPageContent('mainContent','pageNav','PlatformAdmin/timeMng/timeList.jsp','系统管理','时间管理')">时间管理</a></li>
+									<li>
+										<a id="item0402">app管理<span class="arrow"></span></a>
+										<ul class="drop-menu">
+											<c:if test="${sessionScope.userinfo.userType == 0 || sessionScope.permissionStr.contains('com.edu.ydjxt.xiaoxue.nhxxzlshxx,')}">
+											<li><a id="item020208" href="javascript:loadMain('PlatformAdmin/HkdApp/appHomePageMng/appStartPageImageList.jsp?sclType=1', '001_0402_020208');">app启动页图片管理</a></li>
+											</c:if>
+											<c:if test="${sessionScope.userinfo.userType == 0 || sessionScope.permissionStr.contains('com.edu.ydjxt.xiaoxue.xxzllbxx,')}">
+											<li><a id="item020209" href="javascript:loadMain('PlatformAdmin/HkdApp/appHomePageMng/appHomePageImageList.jsp?sclType=1', '001_0402_020209');">app首页图片管理</a></li>
+											</c:if>
+											<c:if test="${sessionScope.userinfo.userType == 0 || sessionScope.permissionStr.contains('com.edu.ydjxt.xiaoxue.xxzllbxx,')}">
+											<li><a id="item020779" href="javascript:loadMain('PlatformAdmin/appInfoMng/appInfoList.jsp?sclType=1', '001_0402_020209');">app信息管理</a></li>
+											</c:if>
+										</ul>
+									</li>
+								</ul>
+							</li>
+							<li><a class="icon-bars" href="javascript:void(0);" id="item02" >&nbsp;好快当app管理<span class="arrow"></span></a>
+								<ul class="drop-menu">
+									<li><a href="javascript:loadPageContent('mainContent','pageNav','PlatformAdmin/HkdApp/orderMng/orderInfoList.jsp','好快当app管理','订单管理')">订单管理</a></li>
+									<!-- 
+										<li><a href="javascript:loadPageContent('mainContent','pageNav','PlatformAdmin/HkdApp/exceptionOrderMng/exceptionOrderList.jsp','好快当app管理','异常订单管理')">异常订单管理</a></li>
+									 -->
+									<li><a href="javascript:loadPageContent('mainContent','pageNav','PlatformAdmin/HkdApp/certificateMng/certificateList.jsp','好快当app管理','会员实名认证管理')">会员实名认证管理</a></li>
+									<li><a href="javascript:loadPageContent('mainContent','pageNav','PlatformAdmin/HkdApp/cashBalanceMng/withdrawCashList.jsp','好快当app管理','会员提现记录管理')">会员提现记录管理</a></li>
+									<li>
+										<a id="item0202">会员收藏管理<span class="arrow"></span></a>
+										<ul class="drop-menu">
+											<c:if test="${sessionScope.userinfo.userType == 0 || sessionScope.permissionStr.contains('com.edu.ydjxt.xiaoxue.nhxxzlshxx,')}">
+											<li><a id="item020201" href="javascript:loadMain('PlatformAdmin/HkdApp/collectionMng/collectBusinessList.jsp?sclType=1', '02_0202_020201');">会员收藏商家管理</a></li>
+											</c:if>
+											<c:if test="${sessionScope.userinfo.userType == 0 || sessionScope.permissionStr.contains('com.edu.ydjxt.xiaoxue.xxzllbxx,')}">
+											<li><a id="item020202" href="javascript:loadMain('PlatformAdmin/HkdApp/collectionMng/collectCommodityList.jsp?sclType=1', '02_0202_020202');">会员收藏商品管理</a></li>
+											</c:if>
+										</ul>
+									</li>
+									<li>
+										<a id="item0102">会员地址管理<span class="arrow"></span></a>
+										<ul class="drop-menu">
+											<c:if test="${sessionScope.userinfo.userType == 0 || sessionScope.permissionStr.contains('com.edu.ydjxt.xiaoxue.nhxxzlshxx,')}">
+											<li><a id="item020203" href="javascript:loadMain('PlatformAdmin/HkdApp/orderMng/collectAddressList.jsp?sclType=1', '02_0102_020203');">会员收藏地址点管理</a></li>
+											</c:if>
+											<c:if test="${sessionScope.userinfo.userType == 0 || sessionScope.permissionStr.contains('com.edu.ydjxt.xiaoxue.xxzllbxx,')}">
+											<li><a id="item020204" href="javascript:loadMain('PlatformAdmin/HkdApp/orderMng/sendAddressList.jsp?sclType=1', '02_0102_020204');">会员收货地址管理</a></li>
+											</c:if>
+										</ul>
+									</li>
+									<li>
+										<a id="item0502">商家商品管理<span class="arrow"></span></a>
+										<ul class="drop-menu">
+											<c:if test="${sessionScope.userinfo.userType == 0 || sessionScope.permissionStr.contains('com.edu.ydjxt.xiaoxue.xxzllbxx,')}">
+											<input type="hidden" value="" id="businessUUIDS"/>
+											<input type="hidden" value="" id="businessPage"/>
+											
+											<input type="hidden" value="" id="businessAddrs"/>
+											<input type="hidden" value="" id="businessNames"/>
+											<input type="hidden" value="" id="unitUUIDs"/>
+											<input type="hidden" value="" id="businessAreas"/>
+											<input type="hidden" value="" id="businessTypes"/>
+											<input type="hidden" value="" id="businessHots"/>
+											<li><a id="item025209" onclick="setBusinessPage();" href="javascript:loadMain('PlatformAdmin/HkdApp/businessCommodityMng/businessList.jsp', '02_0502_025209');">商家管理</a></li>
+											</c:if>
+											<c:if test="${sessionScope.userinfo.userType == 0 || sessionScope.permissionStr.contains('com.edu.ydjxt.xiaoxue.xxzllbxx,')}">
+											<li><a id="item02119" href="javascript:loadMain('PlatformAdmin/HkdApp/businessCommodityMng/commodityLists.jsp', '02_0502_02119');">商品管理</a></li>
+											</c:if>
+										</ul>
+									</li>
+									<li>
+										<a id="item0902">会员评价及反馈<span class="arrow"></span></a>
+										<ul class="drop-menu">
+											<c:if test="${sessionScope.userinfo.userType == 0 || sessionScope.permissionStr.contains('com.edu.ydjxt.xiaoxue.nhxxzlshxx,')}">
+											<li><a id="item0202019" href="javascript:loadMain('PlatformAdmin/HkdApp/evaluateMng/evaluateInfoList.jsp?sclType=1', '02_0902_0202019');">会员评价管理</a></li>
+											</c:if>
+											<c:if test="${sessionScope.userinfo.userType == 0 || sessionScope.permissionStr.contains('com.edu.ydjxt.xiaoxue.xxzllbxx,')}">
+											<li><a id="item0202029" href="javascript:loadMain('PlatformAdmin/HkdApp/feedBackInfoMng/feedBackInfoList.jsp?sclType=1', '02_0902_0202029');">会员反馈管理</a></li>
+											</c:if>
+										</ul>
+									</li>
+								</ul>
+							</li>
+							<li><a class="icon-bars" href="javascript:void(0);">&nbsp;XX管理<span class="arrow"></span></a>
+								<ul class="drop-menu">
+									<li><a href="javascript:loadPageContent('mainContent','pageNav','admin/transferMng/transferInfoList.jsp?value=1','xx管理','xx管理')">xx管理</a></li>
+								</ul>
+							</li>
+						</ul>
+						<!--
+                        	描述：右侧用户资料
+                        -->
+						<ul class="nav nav-inline nav-menu navbar-right">
+							<li>
+								<a class="bg-main" href="javascript:;">
+									<spn><img src="static/images/man.png" width="28" class="radius-circle"></spn>
+									管理员
+									<span class="downward"></span>
+								</a>
+								<ul id="personalInfoMotify" class="drop-menu">
+								</ul>
+							</li>
+							<li><a class="bg-yellow" target="_blank" href="javascript:logout();"><span class="icon-sign-out"></span>注销</a></li>
+						</ul>
+					</div>
+				</div>
+			</div>
+		</div>
+		<!--内容-->
+		<div class="layout">
+			<ul id="pageNav" class="bread bg">
+				<li><a href="#" class="icon-home">首页</a> </li>
+				<li><a href="#">系统中心</a></li>
+			</ul>
+			<div id="mainContent" class="admin">
+				<div class="line-big">
+					<div class="xm3">
+						<div class="panel border-back">
+							<div class="panel-body text-center">
+								<img src="static/images/man.png" width="120" class="radius-circle">
+								<br> 管理员
+							</div>
+							<div class="panel-foot bg-back border-back">您好，管理员。</div>
+						</div>
+						<br>
+						<div class="panel">
+							<div class="panel-head"><strong>站点统计</strong></div>
+							<ul class="list-group">
+								<li><span class="float-right badge bg-red">暂无数据</span><span class="icon-user"></span> 用户</li>
+								<li><span class="float-right badge bg-main">暂无数据</span><span class="icon-building"></span> 学校</li>
+								<li><span class="float-right badge bg-main">暂无数据</span><span class="icon-file-text"></span> 咨询</li>
+								<li><span class="float-right badge bg-main">暂无数据</span><span class="icon-legal"></span> 政策</li>
+							</ul>
+						</div>
+						<br>
+					</div>
+					<div class="xm9">
+						<div class="alert">
+						</div>
+						<div class="panel">
+							<div class="panel-head"><strong>系统信息</strong></div>
+							<table class="table">
+								<tbody>
+									<tr>
+										<th colspan="2">服务器信息</th>
+										<th colspan="2">系统信息</th>
+									</tr>
+									<tr>
+										<td width="110" align="right">操作系统：</td>
+										<td>Linux</td>
+										<td width="90" align="right">系统开发：</td>
+									</tr>
+									<tr>
+										<td align="right">Web服务器：</td>
+										<td>Apache</td>
+										<td align="right">主页：</td>
+										<td><a href="front/index.jsp" target="_blank">http://www.xxxxxxxx.com</a></td>
+									</tr>
+									<tr>
+										<td align="right">数据库：</td>
+										<td>MySQL</td>
+										<td align="right">程序语言：</td>
+										<td>Java</td>
+									</tr>
+								</tbody>
+							</table>
+						</div>
+					</div>
+				</div>
+				<br>
+			</div>
+		</div>
+		<div class="hidden">
+		<script src="static/js/jquery.js"></script>
+		<script src="static/js/pintuer.js"></script>
+		<script src="static/js/respond.js"></script>
+		<script src="static/js/admin.js"></script>
+		<script src="static/js/jquery.tablesorter.js"></script>
+		<script src="static/js/jedate/jedate.js"></script>
+		<script src="static/js/layer.js"></script>
+		<script src="static/js/public.js"></script>	
+		<script src="static/js/jquery-form.js"></script>
+		<!-- ztree -->
+		<link rel="stylesheet" href="static/zTree/css/zTreeStyle/zTreeStyle.css" type="text/css">
+		<script src="static/zTree/js/jquery.ztree.core-3.5.js"></script>
+		<script src="static/zTree/js/jquery.ztree.excheck-3.5.js"></script>
+		<script src="static/zTree/js/jquery.ztree.exedit-3.5.js"></script>
+		
+		<!-- 引入 ECharts 文件 -->
+	    <script src="static/echarts/echarts.min.js"></script>
+	    <script src="static/echarts/china.js"></script>
+	    <script src="static/echarts/guizhou.js"></script>
+			<script type="text/javascript">
+				var iframeWin;
+				var layerOpenIndex;
+				$(function(){
+					if ("null"=="${sessionScope.userinfo}"||""=="${sessionScope.userinfo}"){
+						window.location = '<%=path%>/PlatformAdmin/logout.jsp';
+					}else{
+						loadPersonalInfo ("${sessionScope.userinfo}");
+					}
+					
+				});
+				function loadPersonalInfo (data){
+					var motifyHtml = '<li><a class="icon-key" target="_blank" href="javascript:void();" onclick="openUserPwdEditWin();">修改密码</a></li>';
+					$("#personalInfoMotify").html(motifyHtml);
+				}
+				function setBusinessPage(){
+					//当从app管理进入商家管理的时候就将businessPage的值设置为1，
+					//避免从商家管理进入商品管理的时候设置的businessPage值为当前商家管理页数的值，
+					//再点击商家管理的时候就不是跳转到第一页。
+					$('#businessPage').val(1);
+				}
+				function loadMain(url, ids){
+		    		$("#mainContent").html("");
+				    $("#mainContent").load(url);
+						
+					var tmpArr = ids.split("_");
+					var temp = "";
+					for(var i = 0; i<tmpArr.length; i++){
+						temp += '<li>' + $("#item"+tmpArr[i]).text() + '</li>';
+					}
+				    $("#pageNav").html('<li><a href="admin/index.jsp" class="icon-home"> 首页</a></li>' + temp);
+				}
+	
+			//密码修改
+			function openUserPwdEditWin(){
+				if ("<%=permissionStr%>".indexOf("nmqedu")>=0){
+					var winTitle = '<i class="icon-plus"></i> 修改密码 &nbsp;&nbsp;&nbsp;<font color="red">(新用户默认密码:000000)</font>';
+					var url = 'PlatformAdmin/userMng/editPwd.jsp';
+					var area = ['28%','50%'];
+					var btn = ['<i class="icon-save"></i> 确&nbsp;&nbsp;&nbsp;定', '<i class="icon-times"></i> 取&nbsp;&nbsp;&nbsp;消'];
+					layerOpenIndex = openWin(url, winTitle, area, btn, updateUserPwd, afterOpenUserPwdEditWin, {});
+				}else{
+					layer.msg('没有权限！', {icon: 0});
+				}
+			}
+	
+			function afterOpenUserPwdEditWin(layero, index, params){
+				var body = layer.getChildFrame('body', index);
+				pwdEditForm = body.find('form')[0];
+			    iframeWin = window[layero.find('iframe')[0]['name']]; //得到iframe页的窗口对象，执行iframe页的方法：iframeWin.method();
+			}
+			
+			function updateUserPwd(iframeWin,params){
+				if (iframeWin.validate()){
+					$.ajax({
+						 url: '<%=path%>/system/user/upAccountPwdByUUID',
+						 type: "POST",
+						 cache:false,
+						 data: iframeWin.getFromSerialize(),
+						 success: function(data){
+							 layer.close(layerOpenIndex);
+							 if (data=="1"){
+								layer.msg('密码修改成功！', {icon: 1});
+							 }else{
+								layer.msg('密码修改失败！', {icon: 1});
+							 }
+						},
+						error : function() {  
+							 layer.msg('添加或修改数据时出现异常！', {icon: 0}); 
+						}, 
+						dataType: 'json'
+						});
+				}
+				
+			}
+			
+			function loadPageContent(conttentDomId,pageNavDomId, pageUrl,parentName,childName){
+				$("#"+conttentDomId).html("");
+		    	$("#"+conttentDomId).load(pageUrl);
+		    	$("#"+pageNavDomId).html('<li><a href="admin/index.jsp" class="icon-home"> 首页</a></li>\
+						<li>' + parentName + '</li>\
+						<li>' + childName + '</li>');
+			}
+			
+			 //注销
+		    function logout(){
+		    	layer.confirm("您确定要退出当前程序并返回登录页面？", function(index){
+		            window.onbeforeunload = null;
+		            //浏览器重定向到登陆页面
+	                window.location = '<%=path%>/PlatformAdmin/logout.jsp';
+				}); 
+		    }
+		</script>
+		</div>
+	</body>
+</html>

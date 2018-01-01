@@ -1,0 +1,221 @@
+package com.alipay.util;
+
+import java.net.URLEncoder;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import com.alipay.api.AlipayApiException;
+import com.alipay.api.AlipayClient;
+import com.alipay.api.DefaultAlipayClient;
+import com.alipay.api.request.AlipayFundTransToaccountTransferRequest;
+import com.alipay.api.response.AlipayFundTransToaccountTransferResponse;
+import com.alipay.config.AlipayConfig;
+import com.alipay.util.AlipayCore;
+import com.alipay.util.AlipayNotify;
+import com.alipay.util.UtilDate;
+
+/**
+ * 支付宝工具类
+ * @author chengyz
+ *
+ */
+public class AlipayUtil {
+	
+	/**
+	 * 会员移动端支付宝支付
+	 * @param sourceId
+	 * @param closeConn
+	 * @param vipinfo
+	 * @param request
+	 * @param response
+	 * @return
+	 * @throws Exception
+	 */
+	public static Map alipayPay(String sourceId, boolean closeConn,Map map,HttpServletRequest request, HttpServletResponse response) throws Exception {
+		Map result = new HashMap();
+		//付款金额，必填
+		String total_fee = request.getParameter("total");
+		//订单名称，必填
+		String subject = request.getParameter("subject");
+		//商品描述，可空
+		String body = request.getParameter("body");
+		//商户生成的外部订单号
+		String out_trade_no = (String)map.get("out_trade_no");
+		String orderInfo = AlipayCore.getOrderInfo(subject,
+				body, out_trade_no, total_fee);
+		String sign = AlipayCore.sign(orderInfo, AlipayConfig.private_key);
+		// 仅需对sign 做URL编码
+		sign = URLEncoder.encode(sign, "UTF-8");
+
+		String linkString = orderInfo + "&sign=\"" + sign + "\"&"
+				+ AlipayCore.getSignType();
+
+	    result.put("status", "1");
+	    result.put("msg", "订单获取成功");
+	    result.put("order", linkString);
+	    return result;
+	}
+	
+	/**
+	 * 支付宝POST请求反馈信息地址（回调）
+	 * front/ali/notifyURL", true, "jdbcwrite"
+	 * @param request
+	 * @param response
+	 * @return
+	 * @throws Exception
+	 */
+	public static Map notifyURL(String sourceId, boolean closeConn,HttpServletRequest request, HttpServletResponse response) throws Exception {
+		//获取支付宝POST过来反馈信息
+		Map<String,String> params = new HashMap<String,String>();
+		Map requestParams = request.getParameterMap();
+		for (Iterator iter = requestParams.keySet().iterator(); iter.hasNext();) {
+			String name = (String) iter.next();
+			String[] values = (String[]) requestParams.get(name);
+			String valueStr = "";
+			for (int i = 0; i < values.length; i++) {
+				valueStr = (i == values.length - 1) ? valueStr + values[i]
+						: valueStr + values[i] + ",";
+			}
+			//乱码解决，这段代码在出现乱码时使用。如果mysign和sign不相等也可以使用这段代码转化
+			//valueStr = new String(valueStr.getBytes("ISO-8859-1"), "UTF-8");
+			params.put(name, valueStr);
+		}
+		Map paramMap = new HashMap();
+		//获取支付宝的通知返回参数，可参考技术文档中页面跳转同步通知参数列表(以下仅供参考)//
+		//商户订单号
+		String out_trade_no = request.getParameter("out_trade_no");
+		//支付宝交易号
+		String trade_no = request.getParameter("trade_no");
+		//交易状态
+		String trade_status = request.getParameter("trade_status");
+		
+		//商品名称
+		String subject = request.getParameter("subject");
+		
+		//消费金额
+		String total_fee = request.getParameter("total_fee");
+		
+		//交易时间
+		String notify_time = request.getParameter("notify_time");
+		
+		//商品描述
+		String body = request.getParameter("body");
+		
+		//买方在支付宝中的ID
+		String buyer_id = request.getParameter("buyer_id");
+		
+		paramMap.put("out_trade_no", out_trade_no);
+		paramMap.put("trade_no", trade_no);
+		paramMap.put("trade_status", trade_status);
+		paramMap.put("subject", subject);
+		paramMap.put("total_fee", total_fee);
+		paramMap.put("notify_time", notify_time);
+		paramMap.put("body", body);
+		paramMap.put("buyer_id", buyer_id);
+		
+		return paramMap;
+	}
+	
+	/**
+	 * 支付宝get请求反馈信息地址
+	 * front/pay/returnURL", true, "jdbcwrite"
+	 * @param request
+	 * @param response
+	 * @return
+	 * @throws Exception
+	 */
+	public static Map returnURL(String sourceId, boolean closeConn,HttpServletRequest request, HttpServletResponse response) throws Exception {
+		//获取支付宝GET过来反馈信息
+		Map<String,String> params = new HashMap<String,String>();
+		Map requestParams = request.getParameterMap();
+		for (Iterator iter = requestParams.keySet().iterator(); iter.hasNext();) {
+			String name = (String) iter.next();
+			String[] values = (String[]) requestParams.get(name);
+			String valueStr = "";
+			for (int i = 0; i < values.length; i++) {
+				valueStr = (i == values.length - 1) ? valueStr + values[i]
+						: valueStr + values[i] + ",";
+			}
+			//乱码解决，这段代码在出现乱码时使用。如果mysign和sign不相等也可以使用这段代码转化
+			//valueStr = new String(valueStr.getBytes("ISO-8859-1"), "UTF-8");
+			params.put(name, valueStr);
+		}
+		Map<String,String> paramMap = new HashMap<String,String>();
+		//获取支付宝的通知返回参数，可参考技术文档中页面跳转同步通知参数列表(以下仅供参考)//
+		//商户订单号
+		String out_trade_no = request.getParameter("out_trade_no");
+
+		//支付宝交易号
+		String trade_no = request.getParameter("trade_no");
+
+		//交易状态
+		String trade_status = request.getParameter("trade_status");
+		
+		//商品名称
+		String subject = request.getParameter("subject");
+		
+		//充值金额
+		String total_fee = request.getParameter("total_fee");
+		
+		//交易时间
+		String notify_time = request.getParameter("notify_time");
+		
+		//商品描述
+		String body = request.getParameter("body");
+		
+		//买方在支付宝中的ID
+		String buyer_id = request.getParameter("buyer_id");
+		
+		//获取支付宝的通知返回参数，可参考技术文档中页面跳转同步通知参数列表(以上仅供参考)//
+		paramMap.put("out_trade_no", out_trade_no);
+		paramMap.put("trade_no", trade_no);
+		paramMap.put("trade_status", trade_status);
+		paramMap.put("subject", subject);
+		paramMap.put("total_fee", total_fee);
+		paramMap.put("notify_time", notify_time);
+		paramMap.put("body", body);
+		paramMap.put("buyer_id", buyer_id);
+  		
+		//计算得出通知验证结果
+		boolean verify_result = AlipayNotify.verify(params);
+		if(verify_result) {
+			return paramMap;
+		}
+		return null;
+	}
+	/**
+	 * 单笔转账功能（不收手续费）
+	 * 后台审核通过同意提现则调用企业支付宝账户转账给申请提现的个人用户账号
+	 * @param sourceId
+	 * @param closeConn
+	 * @param withdrawCashAccount(支付宝账号)
+	 * @param withdrawCashAmount(提现金额)
+	 * @return
+	 * @throws Exception
+	 */
+	public static boolean transferToClient(String sourceId, boolean closeConn, String withdrawCashAccount, String withdrawCashAmount) throws Exception {
+
+		AlipayClient alipayClient = new DefaultAlipayClient("https://openapi.alipay.com/gateway.do", AlipayConfig.appid, AlipayConfig.private_transfer_key, "json", "GBK", AlipayConfig.alipay_public_transfer_key, "RSA");
+		AlipayFundTransToaccountTransferRequest request = new AlipayFundTransToaccountTransferRequest();
+		String out_biz_no = UtilDate.getOrderNum();
+		request.setBizContent("{" + "    \"out_biz_no\":\"" + out_biz_no + "\"," + "    \"payee_type\":\"ALIPAY_LOGONID\"," + "    \"payee_account\":\"" + withdrawCashAccount + "\"," + "    \"amount\":\"" + withdrawCashAmount + "\"," + "    \"payer_show_name\":\"会员提现\"," + "    \"payee_real_name\":\"\"," + "    \"remark\":\"转账备注\"," + "  }");
+		AlipayFundTransToaccountTransferResponse response;
+		try {
+			response = alipayClient.execute(request);
+			if (response.isSuccess()) {
+				System.out.println("转账调用成功");
+				return true;
+			} else {
+				System.out.println("转账调用失败");
+				return false;
+			}
+		} catch (AlipayApiException e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+}

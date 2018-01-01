@@ -1,0 +1,179 @@
+package com.platform.service.impl;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+import spark.annotation.Auto;
+
+import com.mysql.jdbc.StringUtils;
+import com.platform.entity.MenuInfo;
+import com.platform.entity.RoleInfo;
+import com.platform.entity.RoleVip;
+import com.platform.entity.VipInfo;
+import com.platform.service.IRoleVipService;
+
+import dbengine.dao.EntityDao;
+import dbengine.dao.SqlDao;
+
+public class RoleVipServiceImpl implements IRoleVipService{
+
+	//注入EntityDao实体
+	@Auto(name=EntityDao.class)
+	private EntityDao entitydao;
+	
+	//注入SqlDao实体
+	@Auto(name=SqlDao.class)
+	private SqlDao sqldao;
+	/**
+	 * 保存角色会员
+	 */
+	@Override
+	public boolean saveRoleVip(String sourceId,boolean closeConn,List<RoleVip> ruList) {
+		if(ruList==null || ruList.size()<1){
+			return false;
+		}		
+		try {
+			return entitydao.saveBatch(sourceId, ruList, closeConn);
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return false;
+	}
+	/**
+	 * 删除会员角色
+	 */
+	@Override
+	public boolean deleteRoleVip(String sourceId,boolean closeConn, String roleUUID, String vipUUID) {
+		StringBuilder sql = new StringBuilder();
+		List<Object> params = new ArrayList<Object>();
+		sql.append("delete from role_vip where 1 = 1");
+		if(roleUUID!=null && !"".equals(roleUUID) && !"null".equals(roleUUID)){
+			sql.append(" and roleUUID = ?");
+			params.add(roleUUID);
+		}
+		if(vipUUID != null && !"".equals(vipUUID) && !"null".equals(vipUUID)){
+			sql.append(" and vipUUID = ?");
+			params.add(vipUUID);
+		}
+		return sqldao.executeSql(sourceId, sql.toString(), closeConn, params);
+	}
+	/**
+	 * 通过角色uuid查会员信息列表
+	 */
+	@Override
+	public List<VipInfo> findVipByRoleUUID(String sourceId,boolean closeConn,String roleUUID) {
+		if(roleUUID==null || "".equals(roleUUID) || "null".equals(roleUUID)){
+			return null;
+		}
+		StringBuilder sql = new StringBuilder();
+		List<Object> params = new ArrayList<Object>();
+		sql.append("select * from vip_info u where 1=1");
+		sql.append(" and vipUUID in(");
+			sql.append("select vipUUID from role_vip ru where 1 = 1");
+			sql.append(" and ru.roleUUID=?");
+			params.add(roleUUID);
+		sql.append(")");
+		return (List<VipInfo>)sqldao.findListBySql(sourceId, sql.toString(), VipInfo.class, closeConn, params);
+	}
+	/**
+	 * 通过角色uuid查没有关联的会员
+	 */
+	@Override
+	public List<VipInfo> findNotVipByRoleUUID(String sourceId,boolean closeConn,String roleUUID) {
+		if(roleUUID==null || "".equals(roleUUID) || "null".equals(roleUUID)){
+			return null;
+		}
+		StringBuilder sql = new StringBuilder();
+		List<Object> params = new ArrayList<Object>();
+		sql.append("select * from vip_info u where 1=1");
+		sql.append(" and vipUUID not in(");
+			sql.append("select vipUUID from role_vip ru where 1=1");
+			sql.append(" and ru.roleUUID=?");
+			params.add(roleUUID);
+		sql.append(")");
+		return (List<VipInfo>)sqldao.findListBySql(sourceId, sql.toString(), VipInfo.class, closeConn, params);
+	}
+	/**
+	 * 通过会员uuid查关联的角色信息
+	 */
+	@Override
+	public List<RoleInfo> findRoleByVipUUID(String sourceId,boolean closeConn,String vipUUID) {
+		if(vipUUID==null || "".equals(vipUUID) || "null".equals(vipUUID)){
+			return null;
+		}
+		StringBuilder sql = new StringBuilder();
+		List<Object> params = new ArrayList<Object>();
+		sql.append("select * from role_info ri where ri.roleUUID in(");
+		sql.append("select roleUUID from role_vip ru where 1 = 1");
+		sql.append(" and ru.vipUUID = ?");
+		params.add(vipUUID);
+		sql.append(")");
+		return (List<RoleInfo>)sqldao.findListBySql(sourceId, sql.toString(), RoleInfo.class, closeConn, params);
+	}
+    /**
+     * 通过会员uuid查没有关联的角色信息
+     * @param sourceId
+     * @param closeConn
+     * @param unitUUID
+     * @param VipUUID
+     * @return
+     */
+	@Override
+	public List<RoleInfo> findNotRoleByVipUUID(String sourceId,boolean closeConn, String vipUUID) {
+		if(vipUUID==null || "".equals(vipUUID) || "null".equals(vipUUID)){
+			return null;
+		}
+		StringBuilder sql = new StringBuilder();
+		List<Object> params = new ArrayList<Object>();
+		sql.append("select * from role_info ri where ri.roleUUID not in(");
+		sql.append("select roleUUID from role_vip ru where 1 = 1");
+		sql.append(" and ru.vipUUID = ?");
+		params.add(vipUUID);
+		sql.append(")");
+		return (List<RoleInfo>)sqldao.findListBySql(sourceId, sql.toString(), RoleInfo.class, closeConn, params);
+	}
+	@Override
+	public List<Map> findRoleToAssignRole(String sourceId, boolean closeConn,
+			String vipUUID, String unitUUID) {
+		if (StringUtils.isNullOrEmpty(unitUUID)&&StringUtils.isNullOrEmpty(vipUUID)) {
+			return null;
+		}
+		StringBuilder sql = new StringBuilder();
+		
+		sql.append("SELECT mri.roleUUID,mri.roleName,mr.roleUUID AS selected FROM (SELECT mi.roleUUID,mi.roleName FROM role_info mi WHERE mi.unitUUID = '"+unitUUID+"') mri LEFT JOIN ( SELECT roleUUID FROM role_vip ai WHERE ai.vipUUID = '"+vipUUID+"' AND ai.unitUUID = '"+unitUUID+"' ) mr ON mri.roleUUID = mr.roleUUID ORDER BY roleName");		
+		List<Map> listMap = (List<Map>)sqldao.findMapListBysql(sourceId, sql.toString(), closeConn, null);
+		if(listMap==null || listMap.size() < 1){
+			return null;
+		}
+		for(Map map : listMap){
+			if(map.get("selected") != null){
+				map.put("selected", "selected");
+			}else{
+				map.put("selected", "");
+			}
+		}
+		return listMap;
+	}
+	@Override
+	public List<MenuInfo> findMenuForVip(String sourceId, boolean closeConn,
+			String vipUUID, String unitUUID) {
+		if(vipUUID==null || "".equals(vipUUID) || "null".equals(vipUUID)||unitUUID==null || "".equals(unitUUID) || "null".equals(unitUUID)){
+			return null;
+		}
+		StringBuilder sql = new StringBuilder();
+		List<Object> params = new ArrayList<Object>();
+		sql.append("select * from menu_info m where 1 = 1");
+		sql.append(" and menuUUID in(");
+			sql.append("select menuUUID from menu_role mu where 1 = 1");
+			sql.append(" and mu.unitUUID = ? and mu.roleUUID in (");
+				sql.append("select roleUUID from role_vip ru where 1 = 1");
+				sql.append(" and ru.unitUUID = ? and ru.vipUUID = ? ");
+			params.add(unitUUID);
+				params.add(unitUUID);
+				params.add(vipUUID);
+		sql.append("))");
+		return sqldao.findListBySql(sourceId, sql.toString(), MenuInfo.class, closeConn, params);
+	}
+}

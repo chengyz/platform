@@ -1,0 +1,84 @@
+package com.sctgz.HkdApp.action;
+
+import spark.Request;
+import spark.Response;
+import spark.Route;
+import spark.Spark;
+import spark.annotation.Auto;
+import spark.servlet.ISparkApplication;
+
+import com.sctgz.HkdApp.manage.BusinessMng;
+/**
+ * 
+ * 商家信息action
+ * @author hshzh
+ * @date 2017-2-16 下午5:03:52
+ */
+public class BusinessAction implements ISparkApplication {
+
+	@Auto(name = BusinessMng.class)
+	private BusinessMng businessMng;
+	@Override
+	public void run() {
+		Spark.post(new Route("/hkdapp/business/saveOrUpBusiness", true, "jdbcwrite") {
+			@Override
+			public Object handle(Request request, Response response)throws Exception {
+				return businessMng.saveOrUpBusiness("jdbcwrite", false, request.raw(),response.raw());
+			}
+
+		});
+		Spark.post(new Route("/hkdapp/business/delBusinessInfo", true, "jdbcwrite") {
+
+			@Override
+			public Object handle(Request request, Response response)throws Exception {
+				return businessMng.delBusinessInfo("jdbcwrite", false, request.raw(),response.raw());
+			}
+
+		});
+		Spark.post(new Route("/hkdapp/business/findBusinessInfo", false, "jdbcread") {
+
+			@Override
+			public Object handle(Request request, Response response)
+					throws Exception {
+				return businessMng.findBusinessInfo("jdbcread", true, request.raw(),
+						response.raw());
+			}
+
+		});
+		Spark.post(new Route("/hkdapp/business/findBussinessList", false, "jdbcread") {
+
+			@Override
+			public Object handle(Request request, Response response) throws Exception {
+				return businessMng.findBussinessList("jdbcread", true, request.raw(),response.raw());
+			}
+		});
+		/**
+		 * 上传商家的图片
+		 */
+		Spark.post(new Route("/hkdapp/business/uploadImages",true,"jdbcwrite") {		
+			@Override
+			public Object handle(Request request, Response response) throws Exception {
+				return businessMng.uploadImage(request.raw(), response.raw());
+			}
+		});
+		/**
+		 * 后台修改商家
+		 */
+		Spark.post(new Route("/hkdapp/business/updateBusiness", true, "jdbcwrite") {
+			@Override
+			public Object handle(Request request, Response response)throws Exception {
+				return businessMng.updateBusiness("jdbcwrite", false, request.raw(),response.raw());
+			}
+		});
+		/**
+		 * 查询商家的类型和商家所在的区域
+		 */
+		Spark.post(new Route("/hkdapp/business/findTypeAreaList", false, "jdbcread") {
+
+			@Override
+			public Object handle(Request request, Response response) throws Exception {
+				return businessMng.findTypeAreaList("jdbcread", true, request.raw(),response.raw());
+			}
+		});
+	}
+}

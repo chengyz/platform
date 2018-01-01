@@ -1,0 +1,95 @@
+package com.platform.service;
+
+import java.util.List;
+import java.util.Map;
+
+import com.platform.entity.UnitInfo;
+
+import dbengine.util.Page;
+/**
+ * 单位（企业）信息接口
+ * @author fengxuefeng
+ *
+ */
+public interface IUnitInfoService {
+
+	/**
+	 * 保存或更新单位（企业信息）
+	 * @param sourceId
+	 * @param closeConn
+	 * @param unitInfo
+	 * @return true:成功，false:失败
+	 */
+	public boolean saveOrUpUnitInfo(String sourceId, boolean closeConn, UnitInfo unitInfo);
+	/**
+	 * 删除单位（企业）信息
+	 * @param sourceId
+	 * @param closeConn
+	 * @param id 数据id
+	 * @return true:成功，false:失败
+	 */
+	public boolean delUnitById(String sourceId, boolean closeConn, String id);
+	/**
+	 * 删除单位（企业）信息
+	 * @param sourceId
+	 * @param closeConn
+	 * @param uuid 数据UUID
+	 * @return true:成功，false:失败
+	 */
+	public boolean delUnitByUUID(String sourceId, boolean closeConn, String uuid);
+	/**
+	 * 
+	 * @param sourceId
+	 * @param closeConn
+	 * @param id 数据ID
+	 * @param status 状态值
+	 * @return
+	 */
+	public boolean chandeUnitStatusById(String sourceId, boolean closeConn, String id, String status);
+	/**
+	 * 
+	 * @param sourceId
+	 * @param closeConn
+	 * @param uuid 数据UUID
+	 * @param status 状态值
+	 * @return
+	 */
+	public boolean chandeUnitStatusByUUID(String sourceId, boolean closeConn, String uuid, String status);
+	
+	/**
+	 * 查找单位（企业）信息
+	 * @param sourceId
+	 * @param closeConn
+	 * @param id 数据id
+	 * @return 实体对象
+	 */
+	public UnitInfo findUnitById(String sourceId, boolean closeConn, String id);
+	/**
+	 * 查找单位（企业）信息
+	 * @param sourceId
+	 * @param closeConn
+	 * @param uuid 数据UUID
+	 * @return 实体对象
+	 */
+	public UnitInfo findUnitByUUID(String sourceId, boolean closeConn, String uuid);
+	/**
+	 * 查找单位（企业）信息列表集
+	 * @param sourceId
+	 * @param closeConn
+	 * @param page 分页
+	 * @param findMap 查询条件
+	 * @return 实体对象集
+	 */
+	@SuppressWarnings("rawtypes")
+	public List<Map> findUnitListMap(String sourceId, boolean closeConn, Page page, Map<String, String> findMap);
+	/**
+	 * 检测单位（企业）是否已存在
+	 * @param sourceId
+	 * @param closeConn
+	 * @param unitCode 组织机构代码
+	 * @return true:存在，false:不存在
+	 */
+	public boolean checkUnitExitByUCode(String sourceId, boolean closeConn, String unitCode);
+	
+	public List<Map<String, String>> findUnitNameToAutoComplete(String sourceId, boolean closeConn, String unitName);
+}

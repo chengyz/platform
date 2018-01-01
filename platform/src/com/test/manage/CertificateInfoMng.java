@@ -1,0 +1,242 @@
+package com.test.manage;
+
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import spark.annotation.Auto;
+
+import com.platform.entity.VipInfo;
+import com.platform.service.IVipService;
+import com.platform.service.impl.VipServiceImpl;
+import com.test.entity.CertificateInfo;
+import com.test.service.CertificateInfoService;
+import com.test.service.impl.CertificateInfoServiceImpl;
+import com.util.DateTimeUtil;
+import com.util.JsonUtil;
+import com.util.RSAUtil;
+import com.util.ReqToEntityUtil;
+import com.util.ReqToMapUtil;
+
+import dbengine.util.Page;
+
+/**
+ * 会员实名认证的manage
+ * @author chengyz
+ */
+public class CertificateInfoMng {
+	@Auto(name=CertificateInfoServiceImpl.class)
+	private CertificateInfoService certificateInfoService;
+	@Auto(name=VipServiceImpl.class)
+	private IVipService vipService;
+	/**
+	 * 通过会员UUID查询实名认证信息
+	 * @param sourceId
+	 * @param closeConn
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	public String findCertificate(String sourceId, boolean closeConn, HttpServletRequest request, HttpServletResponse response) {
+		String vipUUID = request.getParameter("vipUUID");
+		if(vipUUID != null && !"".equals(vipUUID) && !"null".equals(vipUUID)){
+			CertificateInfo certificateInfo = certificateInfoService.findCertificate(sourceId, closeConn, vipUUID);
+			if(certificateInfo != null){
+				return JsonUtil.ObjToJson(certificateInfo);
+			}else{
+				return JsonUtil.ObjToJson("[]");
+			}
+		}else{
+			return JsonUtil.ObjToJson("[]");
+		}
+	}
+	/**
+	 * 通过实名认证记录UUID查询实名认证信息
+	 * @param sourceId
+	 * @param closeConn
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	public String findCertificByUUID(String sourceId, boolean closeConn, HttpServletRequest request, HttpServletResponse response) {
+		String certUUID = request.getParameter("certUUID");
+		if(certUUID != null && !"".equals(certUUID) && "null".equals(certUUID)){
+			CertificateInfo certificateInfo = certificateInfoService.findCertificateByUUID(sourceId, closeConn, certUUID);
+			if(certificateInfo != null){
+				return JsonUtil.ObjToJson(certificateInfo);
+			}else{
+				return "";
+			}
+		}else{
+			return "";
+		}
+	}
+	/**
+	 * 查询实名认证信息列表
+	 * @param sourceId
+	 * @param closeConn
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	public String findCertificateList(String sourceId, boolean closeConn, HttpServletRequest request, HttpServletResponse response) {
+		Map<String,String> findMap = ReqToMapUtil.reqToMap(request, CertificateInfo.class);
+		String startTime = request.getParameter("startTime");
+		String endTime = request.getParameter("endTime");
+		if(startTime != null && !"".equals(startTime)){
+			startTime = startTime.replace("  ", " ");
+		}
+		if(endTime != null && !"".equals(endTime)){
+			endTime = endTime.replace("  ", " ");
+		}
+		findMap.put("startTime", startTime);
+		findMap.put("endTime", endTime);
+		Page page = (Page)ReqToEntityUtil.reqToEntity(request, Page.class);
+		List<CertificateInfo> certlist = certificateInfoService.findCertificateList(sourceId, closeConn, page, findMap);
+		if(certlist == null || certlist.size() < 1){
+			return "[]";
+		}
+		if(page == null){
+			return JsonUtil.ObjToJson(certlist);
+		}else{
+			return JsonUtil.ObjToJson(page);
+		}
+	}
+	/**
+	 * 删除实名认证信息
+	 * @param sourceId
+	 * @param closeConn
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	public String deleteCertificate(String sourceId, boolean closeConn, HttpServletRequest request, HttpServletResponse response) {
+		String certUUID = request.getParameter("uuids");
+		Map<String, String> map =  new HashMap<String, String>();
+		if(certUUID != null && !"".equals(certUUID)){
+			if(certificateInfoService.deleteCertificate(sourceId, closeConn, certUUID)){
+				map.put("status", "1");
+				map.put("msg", "成功");
+				return JsonUtil.ObjToJson(map);
+			}else{
+				map.put("status", "-2");
+				map.put("msg", "失败");
+				return JsonUtil.ObjToJson(map);
+			}
+		}else{
+			map.put("status", "-1");
+			map.put("msg", "未获取到任何信息");
+			return JsonUtil.ObjToJson(map);
+		}
+	}
+	
+	/**
+	 * 保存或修改实名认证信息(会员自己进行实名认证信息的添加和修改)
+	 * @param sourceId
+	 * @param closeConn
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	public String saveOrUpCertificate(String sourceId, boolean closeConn, HttpServletRequest request, HttpServletResponse response) {
+		CertificateInfo certificateInfo = (CertificateInfo)ReqToEntityUtil.reqToEntity(request, CertificateInfo.class);
+		String idNumber = RSAUtil.decryptData(false, certificateInfo.getIdNumber(), false);
+		System.out.println(idNumber);
+		Map<String,String> map = new HashMap<String,String>();
+		if(idNumber.length() > 18){
+			map.put("status", "-2");
+			map.put("msg", "身份证号不正确");
+			return JsonUtil.ObjToJson(map);
+		}
+		if(certificateInfo == null){
+			map.put("status", "-1");
+			map.put("msg", "未获取到信息");
+			return JsonUtil.ObjToJson(map);
+		}
+		if("2".equals(certificateInfo.getStatus())){
+			map.put("status", "-1");
+			map.put("msg","正在审核中，不能修改");
+			return JsonUtil.ObjToJson(map);
+		}
+		certificateInfo.setIdNumber(idNumber);
+		if(certificateInfo.getId() == null){
+			//添加
+			certificateInfo.setCertUUID(UUID.randomUUID().toString());
+			certificateInfo.setCreateTime(DateTimeUtil.formatDate((new Date()), "yyyy-MM-dd HH:mm:ss"));
+		}else{
+			//修改，需要添加修改时间
+			certificateInfo.setUpdateTime(DateTimeUtil.formatDate((new Date()), "yyyy-MM-dd HH:mm:ss"));
+		}
+		certificateInfo.setStatus("2");
+		if(certificateInfoService.saveOrUpCertificate(sourceId, closeConn, certificateInfo)){
+			map.put("status", "1");
+			map.put("msg","成功");
+			return JsonUtil.ObjToJson(map);
+		}else{
+			map.put("status","-2");
+			map.put("msg", "失败");
+			return JsonUtil.ObjToJson(map);
+		}
+	}
+	/**
+	 * 后台审核实名认证信息
+	 * @param sourceId
+	 * @param closeConn
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	public String updateCertificate(String sourceId, boolean closeConn, HttpServletRequest request, HttpServletResponse response) {
+		CertificateInfo certificateInfo = (CertificateInfo)ReqToEntityUtil.reqToEntity(request, CertificateInfo.class);
+		Map<String,String> map = new HashMap<String,String>();
+		if(certificateInfo != null){
+			VipInfo vip = vipService.findVipInfoByUUID(sourceId, closeConn, certificateInfo.getVipUUID());//查询到实名认证信息对应的会员
+			if(certificateInfo != null && vip != null){
+				if("1".equals(certificateInfo.getStatus())){
+					vip.setCertificateStatus("1");//审核不通过
+				}
+				if("2".equals(certificateInfo.getStatus())){
+					vip.setCertificateStatus("2");//审核中
+				}
+				if("3".equals(certificateInfo.getStatus())){
+					vip.setCertificateStatus("3");//审核通过
+				}
+				certificateInfo.setUpdateTime(DateTimeUtil.formatDate((new Date()), "yyyy-MM-dd HH:mm:ss"));
+				vipService.saveOrUpVip(sourceId, closeConn, vip);//更新会员的实名认证状态
+				if(certificateInfoService.saveOrUpCertificate(sourceId, closeConn, certificateInfo)){
+					map.put("status", "1");
+					map.put("msg","成功");
+					return JsonUtil.ObjToJson(map);
+				}else{
+					map.put("status","-2");
+					map.put("msg", "失败");
+					return JsonUtil.ObjToJson(map);
+				}
+			}
+		}else{
+			map.put("status", "-1");
+			map.put("msg", "未获取到信息");
+			return JsonUtil.ObjToJson(map);
+		}
+		return sourceId;
+		
+	}
+
+}
+
+
+
+
+
+
+
+
+
+
+
+

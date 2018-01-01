@@ -1,0 +1,69 @@
+/**
+ * 
+ */
+package com.sctgz.util;
+
+import java.util.Calendar;
+import java.util.Date;
+import java.util.UUID;
+
+/**
+ * 说明:简单的缓存token的实现
+ * @author zhangmeng
+ * 添加时间 :2017年2月23日 下午1:26:25
+ *
+ */
+public class SimpleTokenUtil {
+	/**
+	 * 生成token，并存入缓存，值为超期时间
+	 * @param key 加密字串
+	 * @param age 有效期，单位秒
+	 * @return
+	 */
+	static public String createToken(String key, Long age){
+		String token = SecurityUtil.toMd5(key + "_"+UUID.randomUUID().toString());
+		Calendar c = Calendar.getInstance();
+		CacheUtil.getInstance().getCache().put(token, c.getTimeInMillis() + age*1000);
+		
+		return token;
+	}
+	
+	/**
+	 * 是否超期
+	 * @param token
+	 * @return
+	 */
+	static public boolean isExpiration(String token){
+		Long time = (Long)CacheUtil.getInstance().getCache().get(token);
+		if(time == null){
+			return false;
+		}else{
+			Calendar c = Calendar.getInstance();
+			if(c.getTimeInMillis() >  time){
+				SimpleTokenUtil.delToken(token);//超期删除
+				return true;
+			}
+			return false;
+		}
+	}
+	
+	/**
+	 * 判断token是否存在
+	 * @param token
+	 * @return
+	 */
+	static public boolean isExistToken(String token){
+		return CacheUtil.getInstance().getCache().containsKey(token);
+	}
+	
+	
+	/**
+	 * 删除token
+	 * @param token
+	 * @return
+	 */
+	static public Object delToken(String token){
+		return CacheUtil.getInstance().getCache().remove(token);
+	}
+
+}

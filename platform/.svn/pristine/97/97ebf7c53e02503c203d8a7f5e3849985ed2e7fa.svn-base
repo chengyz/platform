@@ -1,0 +1,100 @@
+package com.sctgz.HkdApp.service.impl;
+
+import java.util.List;
+import java.util.Map;
+
+import spark.annotation.Auto;
+
+import com.sctgz.HkdApp.entity.BusinessInfo;
+import com.sctgz.HkdApp.entity.CollectBusiness;
+import com.sctgz.HkdApp.service.CollectBusinessService;
+
+import dbengine.dao.EntityDao;
+import dbengine.dao.SqlDao;
+import dbengine.util.Page;
+/**
+ * 会员收藏商家接口实现
+ * @author chengyz
+ *
+ */
+public class CollectBusinessServiceImpl implements CollectBusinessService {
+	@Auto(name=SqlDao.class)
+	private SqlDao sqldao;
+	
+	@Auto(name=EntityDao.class)
+	private EntityDao entityDao;
+	/**
+	 * 会员收藏商家
+	 */
+	@Override
+	public boolean saveCollectBusiness(String sourceId, boolean closeConn,CollectBusiness collectBusiness) {
+		if(collectBusiness == null){
+			return false;
+		}
+		return entityDao.saveEntity(sourceId, collectBusiness, closeConn);
+	}
+	/**
+	 * 会员取消商家的收藏
+	 */
+	@Override
+	public boolean cancelCollectBusiness(String sourceId, boolean closeConn, String vipUUID,String businessUUID) {
+		StringBuilder sql = new StringBuilder();
+		if(vipUUID != null && !"".equals(vipUUID) && businessUUID != null && !"".equals(businessUUID)){
+			sql.append("delete from collect_business where vipUUID = '").append(vipUUID).append("'");
+			sql.append(" and businessUUID ='").append(businessUUID).append("'");
+			return sqldao.executeSql(sourceId, sql.toString(), closeConn,null);
+		}else{
+			return false;
+		}
+	}
+	/**
+	 * 查询会员收藏商家列表
+	 */
+	@Override
+	public List<Map<String,String>> findBusinessList(String sourceId, boolean closeConn, Page page, Map<String,String> findMap) {
+		StringBuilder sql = new StringBuilder();
+		sql.append("select b.*,c.vipPhoneNumber,c.collectTime from business_info b join collect_business c on b.businessUUID = c.businessUUID where 1 = 1 ");
+		if(findMap.get("vipPhoneNumber") != null && !"".equals(findMap.get("vipPhoneNumber"))){
+			sql.append(" and vipPhoneNumber = '").append(findMap.get("vipPhoneNumber").replace("'", "")).append("'");
+		}
+		if(findMap.get("vipUUID") != null && !"".equals(findMap.get("vipUUID"))){
+			sql.append(" and c.vipUUID = '").append(findMap.get("vipUUID").replace("'", "")).append("'");
+		}
+		if(findMap.get("businessFullName") != null && !"".equals(findMap.get("businessFullName"))){
+			sql.append(" and b.businessFullName like '%").append(findMap.get("businessFullName").replace("'", "")).append("%'");
+		}
+		if(page == null){
+			return sqldao.findMapListBysql(sourceId, sql.toString(), closeConn, null);
+		}else{
+			return sqldao.findPageByMysql(sourceId, sql.toString(), closeConn, null, page, null);
+		}
+	}
+	/**
+	 * 查询商家
+	 */
+	@Override
+	public BusinessInfo findBusiness(String sourceId, boolean closeConn, String businessUUID) {
+		if(businessUUID != null && !"".equals(businessUUID)){
+			StringBuilder sql = new StringBuilder();
+			sql.append("select * from business_info where businessUUID = '").append(businessUUID).append("'");
+			return (BusinessInfo)sqldao.findEntityBySql(sourceId, sql.toString(), BusinessInfo.class, closeConn, null);
+		}else{
+			return null;
+		}
+	}
+	/**
+	 * 查询收藏的商家
+	 */
+	@Override
+	public CollectBusiness findCollectBusiness(String sourceId, boolean closeConn, String vipUUID, String businessUUID) {
+		if(vipUUID != null && !"".equals(vipUUID) && businessUUID != null && !"".equals(businessUUID)){
+			StringBuilder sql = new StringBuilder();
+			sql.append("select * from collect_business where businessUUID = '").append(businessUUID).append("'");
+			sql.append(" and vipUUID = '").append(vipUUID).append("'");
+			return (CollectBusiness)sqldao.findEntityBySql(sourceId, sql.toString(), CollectBusiness.class, closeConn, null);
+		}else{
+			return null;
+		}
+	}
+
+}

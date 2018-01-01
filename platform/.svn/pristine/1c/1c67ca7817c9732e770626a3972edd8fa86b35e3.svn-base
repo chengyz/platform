@@ -1,0 +1,31 @@
+package com.sctgz.HkdApp.action;
+
+import spark.Request;
+import spark.Response;
+import spark.Route;
+import spark.Spark;
+import spark.annotation.Auto;
+import spark.servlet.ISparkApplication;
+
+import com.sctgz.HkdApp.manage.OrderPeopleMng;
+/**
+ * 抢单的action
+ * @author chengyz
+ *
+ */
+public class OrderPeopleAction implements ISparkApplication {
+	@Auto(name=OrderPeopleMng.class)
+	private OrderPeopleMng orderPeopleMng;
+	@Override
+	public void run() {
+		/**
+		 * 保存抢单信息
+		 */
+		Spark.post(new Route("/hkdapp/orderPeople/saveorderPeople",true,"jdbcwrite"){
+			@Override
+			public Object handle(Request request,Response response) throws Exception{
+				return orderPeopleMng.saveOrderPeople("jdbcwrite", false, request.raw(), response.raw());
+			}
+		});
+	}
+}

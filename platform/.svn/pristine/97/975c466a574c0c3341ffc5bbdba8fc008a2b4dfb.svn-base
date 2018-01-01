@@ -1,0 +1,98 @@
+package com.sctgz.platform.service.impl;
+
+import java.util.Date;
+import java.util.List;
+import java.util.UUID;
+
+import spark.annotation.Auto;
+
+import com.sctgz.platform.entity.AppInfo;
+import com.sctgz.platform.service.AppInfoService;
+import com.sctgz.util.ComputePbblt;
+import com.sctgz.util.DateUtil;
+
+import dbengine.dao.EntityDao;
+import dbengine.dao.SqlDao;
+import dbengine.util.Page;
+/**
+ * app信息接口实现
+ * @author chengyz
+ *
+ */
+public class AppInfoServiceImpl implements AppInfoService {
+	@Auto(name=SqlDao.class)
+	private SqlDao sqldao;
+	@Auto(name=EntityDao.class)
+	private EntityDao entityDao;
+	/**
+	 * 查询APP版本信息列表
+	 */
+	@Override
+	public List<AppInfo> findAppInfoList(String sourceId, boolean closeConn, Page page) {
+		StringBuilder sql = new StringBuilder();
+		sql.append("select * from app_info");
+		if(page == null){
+			return sqldao.findListBySql(sourceId, sql.toString(), AppInfo.class, closeConn, null);
+		}else{
+			return sqldao.findPageByMysql(sourceId, sql.toString(), closeConn, AppInfo.class, page, null);
+		}
+	}
+	/**
+	 * 添加或修改APP版本信息
+	 */
+	@Override
+	public String saveOrUpAppInfo(String sourceId, boolean closeConn, AppInfo appInfo) {
+		if(appInfo == null || appInfo.getAppVersion() == null || "".equals(appInfo.getAppVersion())){
+			return "-3";
+		}
+		StringBuilder sql = new StringBuilder();
+		sql.append("select * from app_info where appVersion = ");
+		sql.append("(select max(appVersion) from app_info where appType= '").append(appInfo.getAppType()).append("'");
+		sql.append(" and appName = '").append(appInfo.getAppName()).append("')");
+		AppInfo info = (AppInfo)sqldao.findEntityBySql(sourceId, sql.toString(), AppInfo.class, closeConn, null);//当前最高的版本
+		if(info != null){
+			try {
+				if(ComputePbblt.compareVersion(appInfo.getAppVersion(), info.getAppVersion()) < 0 && appInfo.getId() == null){
+					return "-2";
+				}
+				if(appInfo.getId() != null && !"".equals(appInfo.getId())){
+					entityDao.updateEntity(sourceId, appInfo, closeConn);
+					return "2";
+				}
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+		if(entityDao.saveEntity(sourceId, appInfo, closeConn)){
+			return "1";
+		}
+		return "-1";
+	}
+	/**
+	 * 查询APP版本信息
+	 */
+	@Override
+	public AppInfo findAppInfo(String sourceId, boolean closeConn, String appName,String appType) {
+		StringBuilder sql = new StringBuilder();
+		sql.append("select * from app_info where appVersion = (select max(appVersion) from app_info a ");
+		sql.append(" where a.appName = '").append(appName).append("'");
+		sql.append(" and a.appType = '").append(appType).append("')");
+		AppInfo app = (AppInfo)sqldao.findEntityBySql(sourceId, sql.toString(), AppInfo.class, closeConn, null);
+		if(app == null){
+			return null;
+		}
+		return app;
+	}
+	/**
+	 * 删除APP信息
+	 */
+	@Override
+	public boolean deleteAppInf(String sourceId, boolean closeConn, String appUUID) {
+		if(appUUID == null || "".equals(appUUID)){
+			return false;
+		}
+		StringBuilder sql = new StringBuilder();
+		sql.append("delete from app_info where appUUID = '").append(appUUID).append("'");
+		return sqldao.executeSql(sourceId, sql.toString(), closeConn, null);
+	}
+}

@@ -1,0 +1,50 @@
+package com.test.action;
+
+import spark.Request;
+import spark.Response;
+import spark.Route;
+import spark.Spark;
+import spark.annotation.Auto;
+import spark.servlet.ISparkApplication;
+
+import com.test.manage.AppHomePageMng;
+import com.test.manage.ChangeTimeMng;
+/**
+ * 各种时间管理的接口
+ * @author chengyz
+ *
+ */
+public class ChangeTimeAction implements ISparkApplication {
+	@Auto(name=ChangeTimeMng.class)
+	private ChangeTimeMng changeTimeMng;
+	@Override
+	public void run() {
+		/**
+		 * 删除时间记录
+		 */
+		Spark.post(new Route("/hkdapp/changeTime/deleteTime",true,"jdbcwrite") {		
+			@Override
+			public Object handle(Request request, Response response) throws Exception {
+				return changeTimeMng.deleteChangeTime("jdbcwrite", false, request.raw(), response.raw());
+			}
+		});
+		/**
+		 * 时间记录列表
+		 */
+		Spark.post(new Route("/hkdapp/changeTime/timeList",true,"jdbcread") {		
+			@Override
+			public Object handle(Request request, Response response) throws Exception {
+				return changeTimeMng.findChangeTimeList("jdbcread", false, request.raw(), response.raw());
+			}
+		});
+		/**
+		 * 添加或修改时间记录
+		 */
+		Spark.post(new Route("/hkdapp/changeTime/saveOrUpTime",true,"jdbcwrite") {		
+			@Override
+			public Object handle(Request request, Response response) throws Exception {
+				return changeTimeMng.saveOrUpChangeTime("jdbcwrite", false, request.raw(), response.raw());
+			}
+		});
+	}
+}

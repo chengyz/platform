@@ -1,0 +1,58 @@
+package com.sctgz.HkdApp.action;
+
+import java.util.Date;
+import java.util.Map;
+
+import org.apache.commons.httpclient.util.DateUtil;
+
+import spark.Request;
+import spark.Response;
+import spark.Route;
+import spark.Spark;
+import spark.annotation.Auto;
+import spark.servlet.ISparkApplication;
+
+import com.sctgz.HkdApp.manage.WeixinNotifyMng;
+import com.sctgz.platform.entity.VipInfo;
+import com.sctgz.util.CacheUtil;
+
+/**
+ * 微信支付pc端接口
+ * @author hshzh
+ *
+ */
+public class WeixinNotifyAction implements ISparkApplication{
+	@Auto(name = WeixinNotifyMng.class)
+	private WeixinNotifyMng weixinNotifyMng;
+	@Override
+	public void run() {
+		/**
+		 * app微信支付回调
+		 */
+		Spark.post(new Route("/front/weixin/notify",true,"jdbcwrite") {
+			@Override
+			public Object handle(Request request, Response response) throws Exception {
+			    return weixinNotifyMng.notify("jdbcwrite", false, request.raw(), response.raw());
+			}		
+		});
+		/**
+		 * 手机端调用微信支付
+		 */
+		Spark.post(new Route("/front/pay/weixinPay",true,"jdbcwrite") {
+			@Override
+			public Object handle(Request request, Response response) throws Exception {
+				String token = request.raw().getParameter("token");
+				VipInfo vipinfo = null;
+				if(token!=null && !"".equals(token)){
+					Map map = (Map)CacheUtil.getInstance().getTokenObject(token);
+					if(map!=null){
+						vipinfo=(VipInfo)map.get("vipinfo");
+					}
+				}
+				return weixinNotifyMng.weixinAppPay("jdbcwrite", false, vipinfo, request.raw(), response.raw());
+			}
+			
+		});
+	}
+
+}

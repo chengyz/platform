@@ -1,0 +1,273 @@
+package com.sctgz.HkdApp.manage;
+
+import java.math.BigDecimal;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import spark.annotation.Auto;
+
+import com.alipay.util.AlipayUtil;
+import com.alipay.util.UtilDate;
+import com.sctgz.HkdApp.entity.OrderInfo;
+import com.sctgz.HkdApp.entity.VipConsumptionRecord;
+import com.sctgz.HkdApp.entity.VipRefMerchantsOrderNum;
+import com.sctgz.HkdApp.service.IVipConsumptionRecordService;
+import com.sctgz.HkdApp.service.IVipRefMerchantsOrderNumService;
+import com.sctgz.HkdApp.service.OrderInfoService;
+import com.sctgz.HkdApp.service.impl.OrderInfoServiceImpl;
+import com.sctgz.HkdApp.service.impl.VipConsumptionRecordServiceImpl;
+import com.sctgz.HkdApp.service.impl.VipRefMerchantsOrderNumServiceImpl;
+import com.sctgz.platform.entity.VipInfo;
+import com.sctgz.platform.service.IVipService;
+import com.sctgz.platform.service.impl.VipServiceImpl;
+import com.sctgz.util.DateTimeUtil;
+import com.sctgz.util.DateUtil;
+import com.sctgz.util.JsonUtil;
+import com.sctgz.util.UpdateDataUtil;
+
+/**
+ * 会员支付宝支付管理
+ * 
+ * @author chengyz
+ *
+ */
+public class AlipayMng {
+
+	@Auto(name = VipConsumptionRecordServiceImpl.class)
+	private IVipConsumptionRecordService vipConsumptionRecordService;
+
+	@Auto(name = VipServiceImpl.class)
+	private IVipService vipService;
+
+	@Auto(name = VipRefMerchantsOrderNumServiceImpl.class)
+	private IVipRefMerchantsOrderNumService vipRefMerchantsOrderNumService;
+
+	@Auto(name = OrderInfoServiceImpl.class)
+	private OrderInfoService orderInfoService;
+
+	@Auto(name = LocationMng.class)
+	private LocationMng locationMng;
+
+	@Auto(name = MessageMng.class)
+	private MessageMng msgMng;
+
+	/**
+	 * 会员移动端支付宝支付
+	 * 
+	 * @param sourceId
+	 * @param closeConn
+	 * @param vipinfo
+	 * @param request
+	 * @param response
+	 * @return
+	 * @throws Exception
+	 */
+	public String alipayapiActionM(String sourceId, boolean closeConn, VipInfo vipinfo, HttpServletRequest request, HttpServletResponse response) throws Exception {
+		Map<String, String> map = new HashMap<String, String>();
+		if(vipinfo == null) {
+			map.put("status", "-100");
+			map.put("msg", "会员未登录!");
+			return JsonUtil.ObjToJson(map);
+		}
+		// 商户订单号，商户网站订单系统中唯一订单号，必填，系统自动生成
+		String out_trade_no = UtilDate.getOrderNum();
+		String vipUUID = request.getParameter("vipUUID");
+		// 后台自定义的订单UUID
+		String orderUUID = request.getParameter("orderUUID");
+		OrderInfo order = (OrderInfo) orderInfoService.findOrder(sourceId,
+				closeConn, orderUUID);
+		// 若当前时间减去订单的支付截止时间大于零，则订单支付已经超时
+		Date cutOffTime = DateTimeUtil.getDateTime(order.getCutOffTime());
+		
+		if (DateTimeUtil.getTimeInterval(new Date().getTime(), cutOffTime.getTime()) < 0) {
+			map.put("status", "-3");
+			map.put("msg", "支付已经超时");
+			return JsonUtil.ObjToJson(map);
+		}
+		if (order != null) {
+			order.setOutsideOrderNo(out_trade_no);
+			orderInfoService.saveOrUpOrder(sourceId, closeConn, order);
+		}
+		VipRefMerchantsOrderNum t = vipRefMerchantsOrderNumService.findByMerchantsOrderNum(sourceId, closeConn, out_trade_no);
+		if (t == null) {
+			t = new VipRefMerchantsOrderNum();
+			t.setVipUUID(vipUUID);
+			t.setMerchantsOrderNo(out_trade_no);
+			vipRefMerchantsOrderNumService.saveOrUpdate(sourceId, closeConn, t);
+		}
+		Map paramMap = new HashMap();
+		paramMap.put("out_trade_no", out_trade_no);
+		// 调用移动支付工具类对数据进行封装
+		Map paramsMap = AlipayUtil.alipayPay(sourceId, closeConn, paramMap, request, response);
+		return JsonUtil.ObjToJson(paramsMap);
+	}
+
+	/**
+	 * 支付宝POST请求反馈信息地址（回调） front/ali/notifyURL", true, "jdbcwrite"
+	 * 
+	 * @param request
+	 * @param response
+	 * @return
+	 * @throws Exception
+	 */
+	public String notifyURL(String sourceId, boolean closeConn,HttpServletRequest request, HttpServletResponse response) throws Exception {
+		// 获取支付宝的通知返回参数，可参考技术文档中页面跳转同步通知参数列表(以上仅供参考)//
+		Map map = AlipayUtil.notifyURL(sourceId, closeConn, request, response);
+		
+		// 请在这里加上商户的业务逻辑程序代码
+		executeNotify(sourceId, closeConn, map, request, response);// 执行业务逻辑
+
+		return "success"; // 请不要修改或删除
+	}
+
+	/**
+	 * 执行业务逻辑
+	 * @param sourceId
+	 * @param closeConn
+	 * @param map
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	private boolean executeNotify(String sourceId, boolean closeConn, Map map, HttpServletRequest request, HttpServletResponse response) {
+		if (((String) map.get("trade_status")).equals("TRADE_FINISHED")
+				|| ((String) map.get("trade_status")).equals("TRADE_SUCCESS")) {
+			VipRefMerchantsOrderNum urm = vipRefMerchantsOrderNumService
+					.findByMerchantsOrderNum(sourceId, closeConn,
+							(String) map.get("out_trade_no"));
+			if (urm != null) {
+				VipInfo vipinfo = vipService.findVipInfoByUUID(sourceId,
+						closeConn, urm.getVipUUID());
+				OrderInfo orderInfo = orderInfoService.findByOutOrderNo(
+						sourceId, closeConn, urm.getMerchantsOrderNo());
+				Map<String, Object> dataMap = new HashMap<String, Object>();
+				dataMap.put("status", "3");
+				dataMap.put("payMode", "支付宝");
+				dataMap.put("payTime",
+						DateUtil.formatDate(new Date(), "yyyy-MM-dd HH:mm:ss"));
+				dataMap.put("outsidePayNo", (String) map.get("trade_no"));
+				// 直接更新对应的参数即可，不用全部更新
+				UpdateDataUtil.updateData(sourceId, "order_info", dataMap,
+						"outsideOrderNo", urm.getMerchantsOrderNo());
+				// 添加订单坐标缓存
+				locationMng.addUntreatedOrderCache(sourceId, closeConn,
+						orderInfo);
+				// 添加订单消息缓存
+				// msgMap
+				// msgUUID,msgStatus(消息状态:0待处理，1已处理),msgType(消息类型：1一般消息，2广播消息，3点对点消息)，msgModule(消息模块：01发布订单消息,02抢单消息)
+				// msgContent(消息内容),msgSendUUID(消息发送方uuid),msgRecUUID(消息接收方uuid),msgOrderUUID（订单号）
+				Map msgMap = new HashMap();
+				msgMap.put("msgUUID", UUID.randomUUID().toString());// uuid
+				msgMap.put("msgStatus", "0");
+				msgMap.put("msgType", "2");
+				msgMap.put("msgModule", "01");
+				msgMap.put("msgContent", "你已成功派单");
+				msgMap.put("msgSendUUID", orderInfo.getVipUUID());
+				msgMap.put("msgOrderUUID", orderInfo.getOrderUUID());
+				msgMap.put("msgTime", DateUtil.formatDateTime(new Date()));
+				msgMng.addMessage(sourceId, closeConn, msgMap);
+
+				vipRefMerchantsOrderNumService.delete(sourceId, closeConn,
+						vipinfo.getVipUUID(), urm.getMerchantsOrderNo());
+				VipConsumptionRecord c = vipConsumptionRecordService
+						.findVipConsumptionRecord(sourceId, closeConn,
+								(String) map.get("trade_no"));
+				if (c == null) {
+					c = new VipConsumptionRecord();
+					c.setModuleName("");
+					c.setModuleUUID("");
+					BigDecimal consumMoney = new BigDecimal(
+							(String) map.get("total_fee"));
+					consumMoney.setScale(2);
+					c.setConsumptionMoney(consumMoney);
+					String moduleName = "";
+					String detail = "";
+					String time = DateUtil.formatDate(new Date(),
+							"yyyy-MM-dd HH:mm:ss");
+					if ("1".equals(orderInfo.getOrderType())) {
+						moduleName = "帮我买";
+						detail = "在[ " + moduleName + "] 下单  ";
+						if (orderInfo.getBuyOption() != null
+								&& !"".equals(orderInfo.getBuyOption())) {
+							detail += orderInfo.getBuyOption();
+						}
+					}
+					if ("2".equals(orderInfo.getOrderType())) {
+						moduleName = "帮我送";
+						detail = "在[ " + moduleName + "] 下单  ";
+						if (orderInfo.getItemType() != null
+								&& !"".equals(orderInfo.getItemType())) {
+							detail += orderInfo.getItemType();
+						}
+					}
+					if ("3".equals(orderInfo.getOrderType())) {
+						moduleName = "帮我取";
+						detail = "在[ " + moduleName + "] 下单  ";
+						if (orderInfo.getItemType() != null
+								&& !"".equals(orderInfo.getItemType())) {
+							detail += orderInfo.getItemType();
+						}
+					}
+					c.setModuleName(moduleName);
+					c.setConsumptionDetails(detail);
+					c.setTradeNo((String) map.get("trade_no"));
+					c.setConsumptionTime(time);
+					c.setVipMobilePhone(vipinfo.getVipMobile());
+					c.setVipUUID(vipinfo.getVipUUID());
+					c.setVipName(vipinfo.getVipName());
+					c.setUUID(UUID.randomUUID().toString());
+					vipConsumptionRecordService.saveOrUpdate(sourceId,
+							closeConn, c);
+				}
+			}
+			// 判断该笔订单是否在商户网站中已经做过处理
+			// 如果没有做过处理，根据订单号（out_trade_no）在商户网站的订单系统中查到该笔订单的详细，并执行商户的业务程序
+			// 请务必判断请求时的total_fee、seller_id与通知时获取的total_fee、seller_id为一致的
+			// 如果有做过处理，不执行商户的业务程序
+			// 注意：
+			// 退款日期超过可退款期限后（如三个月可退款），支付宝系统发送该交易状态通知
+		} else if (((String) map.get("trade_status")).equals("TRADE_SUCCESS")) {
+			// 判断该笔订单是否在商户网站中已经做过处理
+			// 如果没有做过处理，根据订单号（out_trade_no）在商户网站的订单系统中查到该笔订单的详细，并执行商户的业务程序
+			// 请务必判断请求时的total_fee、seller_id与通知时获取的total_fee、seller_id为一致的
+			// 如果有做过处理，不执行商户的业务程序
+
+			// 注意：
+			// 付款完成后，支付宝系统发送该交易状态通知
+		}
+		return true;
+	}
+
+	/**
+	 * 支付宝get请求反馈信息地址 front/pay/returnURL", true, "jdbcwrite"
+	 * 
+	 * @param request
+	 * @param response
+	 * @return
+	 * @throws Exception
+	 */
+	public boolean returnURL(String sourceId, boolean closeConn,HttpServletRequest request, HttpServletResponse response) throws Exception {
+		// 获取支付宝的通知返回参数，可参考技术文档中页面跳转同步通知参数列表(以上仅供参考)
+		Map map = AlipayUtil.returnURL(sourceId, closeConn, request, response);
+		if (((String) map.get("trade_status")).equals("TRADE_FINISHED")
+				|| ((String) map.get("trade_status")).equals("TRADE_SUCCESS")) {
+			VipRefMerchantsOrderNum urm = vipRefMerchantsOrderNumService.findByMerchantsOrderNum(sourceId, closeConn,((String) map.get("out_trade_no")));
+			if (urm == null) {
+				return false;// 无订单信息
+			}
+			// 会员uuid查会员信息
+			VipInfo vipinfo = vipService.findVipInfoByUUID(sourceId, closeConn,
+					urm.getVipUUID());
+			if (vipinfo == null) {
+				return false;// 无会员信息
+			}
+		}
+		return true;
+	}
+
+}

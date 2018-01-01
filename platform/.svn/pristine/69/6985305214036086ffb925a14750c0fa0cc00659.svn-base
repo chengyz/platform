@@ -1,0 +1,202 @@
+package com.sctgz.HkdApp.manage;
+
+import java.util.Date;
+import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+
+import spark.annotation.Auto;
+
+import com.sctgz.HkdApp.entity.ChangeTime;
+import com.sctgz.HkdApp.entity.OrderInfo;
+import com.sctgz.HkdApp.entity.VipEarnRecord;
+import com.sctgz.HkdApp.service.ChangeTimeService;
+import com.sctgz.HkdApp.service.OrderInfoService;
+import com.sctgz.HkdApp.service.VipBalanceService;
+import com.sctgz.HkdApp.service.VipEarnRecordService;
+import com.sctgz.HkdApp.service.impl.ChangeTimeServiceImpl;
+import com.sctgz.HkdApp.service.impl.OrderInfoServiceImpl;
+import com.sctgz.HkdApp.service.impl.VipBalanceServiceImpl;
+import com.sctgz.HkdApp.service.impl.VipEarnRecordServiceImpl;
+import com.sctgz.platform.entity.VipInfo;
+import com.sctgz.platform.service.IVipService;
+import com.sctgz.platform.service.impl.VipServiceImpl;
+import com.sctgz.util.DateTimeUtil;
+import com.sctgz.util.DateUtil;
+/**
+ * 定时执行任务
+ * @author chengyz
+ *
+ */
+public class TimedTaskMng {
+	
+	@Auto(name=OrderInfoServiceImpl.class)
+	private OrderInfoService orderInfoService;
+	@Auto(name=VipServiceImpl.class)
+	private IVipService vipService;
+	@Auto(name=VipBalanceServiceImpl.class)
+	private VipBalanceService vipBalanceService;
+	@Auto(name=VipEarnRecordServiceImpl.class)
+	private VipEarnRecordService vipEarnRecordSesrvice;
+	@Auto(name=ChangeTimeServiceImpl.class)
+	private ChangeTimeService changeTimeService;
+	
+	/**
+	 * 定时结算订单
+	 */
+	public void task() {
+		ChangeTime times = changeTimeService.findTimeByBelong("jdbcread", false, "1");
+		if(times == null){
+			times = new ChangeTime();
+			times.setFirstScanOrderTime("86400");
+			times.setScanOrderTime("86400");
+		}
+		Runnable runnable = new Runnable() {  
+            public void run() {
+            	ChangeTime time = changeTimeService.findTimeByBelong("jdbcread", false, "1");
+            	if(time == null){
+            		time = new ChangeTime();
+        			time.setAllUnconfirmedTime("3");
+        			time.setVipUnconfirmedTime("1");
+            	}
+	            List<OrderInfo> orderlist = orderInfoService.findOrdersList("jdbcread", false);
+	            if(orderlist == null || orderlist.size() < 1){
+	            	System.out.println("无未确认的订单");
+	            }else{
+	            	for(OrderInfo order :orderlist){
+	                    if("4".equals(order.getStatus())){
+	                    	Date updateTime = DateTimeUtil.getDateTime(order.getUpdateTime());
+	                    	//若当前时间减去订单更新时间大于3天，双方都没有确认的话则将订单改为完成状态
+	                    	if(DateTimeUtil.daysBetween(updateTime, new Date()) > Integer.parseInt(time.getAllUnconfirmedTime())){
+	                    		operate(order);
+	                    	}
+	                    }
+	                    if("5".equals(order.getStatus())){
+	                    	Date updateTime = DateTimeUtil.getDateTime(order.getUpdateTime());
+	                    	//若当前时间减去订单更新时间大于1天，派单者没有确认的话则将订单改为完成状态
+	                    	if(DateTimeUtil.daysBetween(updateTime, new Date()) > Integer.parseInt(time.getVipUnconfirmedTime())){
+	                    		operate(order);
+	                    	}
+	                    }
+	                }
+	            	
+	            }
+            }
+        };
+        ScheduledExecutorService service = Executors.newSingleThreadScheduledExecutor(); 
+        service.scheduleAtFixedRate(runnable, Long.valueOf(times.getFirstScanOrderTime()),Long.valueOf(times.getScanOrderTime()) , TimeUnit.SECONDS);  
+	} 
+	/**
+	 * 执行业务逻辑的方法
+	 * @param order
+	 */
+	public void operate(OrderInfo order){
+		order.setStatus("6");
+		order.setUpdateTime(DateUtil.formatDate(new Date(),"yyyy-MM-dd HH:mm:ss"));
+		orderInfoService.saveOrUpOrder("jdbcwrite", false, order);
+		VipInfo vip = vipService.findVipInfoByOrderUUID("jdbcread", false, order.getOrderUUID());
+		vipBalanceService.updateVipBalance("jdbcwrite", false, vip.getVipUUID(), order.getOrderPrice());//更新跑客的余额
+		//添加会员的收入记录
+		VipEarnRecord record = new VipEarnRecord();
+		if(order.getBuyOption() != null && !"".equals(order.getBuyOption())){
+			record.setEarnDetails(order.getBuyOption());
+		}else if(order.getRemark() != null && !"".equals(order.getRemark())){
+			record.setEarnDetails(order.getRemark());
+		}
+		record.setEarnMoney(order.getOrderPrice());
+		record.setEarnTime(DateUtil.formatDate(new Date(),"yyyy-MM-dd HH:mm:ss"));
+		record.setOrderUUID(order.getOrderUUID());
+		record.setRecordUUID(UUID.randomUUID().toString());
+		record.setVipName(vip.getVipName());
+		record.setVipMobilePhone(vip.getVipMobile());
+		record.setVipUUID(vip.getVipUUID());
+		vipEarnRecordSesrvice.saveOrUpdate("jdbcwrite", false, record);
+		vip.setVipStatus("1");//还原跑客的状态为可以接单
+		vipService.saveOrUpVip("jdbcwrite", false, vip);
+	}
+	/**
+	 * 定时修改未支付订单的状态
+	 */
+	public void updateStatus() {
+		ChangeTime times = changeTimeService.findTimeByBelong("jdbcread", false, "1");
+		if(times == null){
+			times = new ChangeTime();
+			times.setFirstScanOrderTime("300");
+			times.setScanOrderTime("600");
+		}
+		Runnable runnable = new Runnable() {  
+            public void run() { 
+        		ChangeTime time = changeTimeService.findTimeByBelong("jdbcread", false, "1");
+        		if(time == null){
+            		time = new ChangeTime();
+        			time.setPayTimeOut("10");
+            	}
+            	List<OrderInfo> orderlist = orderInfoService.findOrdersLists("jdbcread", false);
+                if(orderlist == null || orderlist.size() < 1){
+                    System.out.println("无未支付订单");
+                }else{
+                	for(OrderInfo order :orderlist){
+                        Date createTime = DateTimeUtil.getDateTime(order.getCreateTime());
+                        //若当前时间减去订单创建时间大于十分钟，则修改订单状态为失效（支付超时）
+                        if(DateTimeUtil.getTimeInterval(createTime.getTime(), new Date().getTime()) > Integer.parseInt(time.getPayTimeOut())){
+                        	update(order);
+                        }
+                    }
+                }
+            }  
+        };  
+        ScheduledExecutorService service = Executors  
+                .newSingleThreadScheduledExecutor();  
+        service.scheduleAtFixedRate(runnable, Long.valueOf(times.getPayFirstScanTime()),Long.valueOf(times.getPayScanTime()), TimeUnit.SECONDS);  
+	}
+	/**
+	 * 修改订单的状态为失效
+	 * @param order
+	 */
+	public void update(OrderInfo order){
+		order.setStatus("2");
+		orderInfoService.saveOrUpOrder("jdbcwrite", false, order);
+	}
+	/**
+	 * 定时修改未被抢的订单状态为失效
+	 */
+	public void updateNoGetOrderStatus() {
+		ChangeTime times = changeTimeService.findTimeByBelong("jdbcread", false, "1");
+		if(times == null){
+			times = new ChangeTime();
+			times.setNoGetFirstScanTime("43200");
+			times.setNoGetScanTime("43200");
+		}
+		Runnable runnable = new Runnable() {  
+            public void run() { 
+            	List<OrderInfo> orderlist = orderInfoService.findOrderNoGetLists("jdbcread", false);
+                if(orderlist == null || orderlist.size() < 1){
+                    System.out.println("没有未被抢的订单");
+                }else{
+                	for(OrderInfo order :orderlist){
+                        Date endTime = DateTimeUtil.getDateTime(order.getEndTime());
+                        //若当前时间减去送达时间大于零，则修改订单状态为失效（没有人接单）
+                        if(DateTimeUtil.getTimeInterval(endTime.getTime(), new Date().getTime()) > 0){
+                        	updateOrderStatus(order);
+                        }
+                    }
+                }
+            }  
+        };  
+        ScheduledExecutorService service = Executors  
+                .newSingleThreadScheduledExecutor();  
+        service.scheduleAtFixedRate(runnable, Long.valueOf(times.getNoGetFirstScanTime()),Long.valueOf(times.getNoGetScanTime()), TimeUnit.SECONDS);  
+	}
+	/**
+	 * 修改订单的状态为失效
+	 * @param order
+	 */
+	public void updateOrderStatus(OrderInfo order){
+		order.setStatus("2");
+		orderInfoService.saveOrUpOrder("jdbcwrite", false, order);
+		vipBalanceService.updateVipBalance("jdbcwrite", false, order.getVipUUID(), order.getOrderPrice());//将会员支付的跑腿费返回到会员的余额中
+	}
+	
+}

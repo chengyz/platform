@@ -1,0 +1,159 @@
+<%@ page language="java" import="java.util.*" pageEncoding="UTF-8"%>
+<%
+String path = request.getContextPath();
+String basePath = request.getScheme()+"://"+request.getServerName()+":"+request.getServerPort()+path+"/";
+%>
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+  <head>
+    <base href="<%=basePath%>">
+    
+    <title>My JSP 'bigFileUploader.jsp' starting page</title>
+    
+	<meta http-equiv="pragma" content="no-cache">
+	<meta http-equiv="cache-control" content="no-cache">
+	<meta http-equiv="expires" content="0">    
+	<meta http-equiv="keywords" content="keyword1,keyword2,keyword3">
+	<meta http-equiv="description" content="This is my page">
+	
+	<link rel="stylesheet" type="text/css" href="testFileUploader/css/webuploader.css">
+
+  </head>
+  
+  <body>
+	 <button id="filePicker">文件上传</button>
+	 <div id="dndArea" style="width: 200px; height: 200px; border: 1px solid red;"></div>
+	 <div id="uploader" style="width: 200px; height: 200px; border: 1px solid green;"></div>
+	 <div id="filePross" style="width: 200px; height: 200px; border: 1px solid black;"></div>
+	 <script type="text/javascript" src="testFileUploader/js/jquery.js"></script>
+	 <script type="text/javascript" src="testFileUploader/js/webuploader.js"></script>
+	 <script type="text/javascript">
+	 	$(function(){
+	 		// 监听分块上传的时间点，断点续传
+ 			var fileMd5;
+			WebUploader.Uploader.register({
+				"before-send-file" : "beforeSendFile",
+				"before-send" : "beforeSend",
+				"after-send-file" : "afterSendFile"
+				}, {
+				beforeSendFile : function(file) {
+					var me = this;
+					// 创建一个deffered,用于通知是否完成操作
+					var deferred = WebUploader.Deferred();
+					// 计算文件的唯一标识，用于断点续传和妙传
+					me.owner.md5File(file, 0, 5 * 1024 * 1024)// 如果读取出错了，则通过reject告诉webuploader文件上传出错。
+		            .fail(function() {
+		                deferred.reject();
+		                $("#filePross").text(file.id+"获取文件md5信息出错");
+		            })
+					.progress(function(percentage) {
+						$("#filePross").text(file.id+"正在获取文件信息...");
+					})
+					.then(function(val) {
+						fileMd5 = val;
+						$("#filePross").text(file.id+"成功获取文件信息,文件md5为："+fileMd5);
+						//放行
+						//deferred.resolve();
+						//妙传检测
+						$.ajax({
+						    type:"POST",
+						    url:"<%=path%>/system/bigfile/merge?action=checkFile",
+						    data:{
+						      fileMd5:fileMd5
+						    },
+						    dataType: "json",
+						    success:function(response){
+						        if(response.ifExist == "1") {
+						        	// 文件存在，中断
+						        	deferred.reject();
+						        	alert("妙传成功");
+						        	window.location.reload();
+						        } else {
+						        	// 文件不存在放行
+									deferred.resolve();
+				              }
+						    }
+						  }
+						);
+					});
+					// 通知完成操作
+					return deferred.promise();
+				},
+				beforeSend : function(block) {
+					var me = this;
+					var deferred = WebUploader.Deferred();
+			        //支持断点续传，发送到后台判断是否已经上传过
+			        $.ajax({
+			            type:"POST",
+			            url:"<%=path%>/system/bigfile/merge?action=checkChunk",
+			            data:{
+			              // 文件唯一表示               
+			              fileMd5:fileMd5,
+			              // 当前分块下标
+			              chunk:block.chunk,
+			              // 当前分块大小
+			              chunkSize:block.end-block.start
+			            },
+			            dataType:"json",
+			            success:function(response) {
+			              if(response.ifExist == "1") {
+			                // 分块存在，跳过该分块
+			                deferred.reject();
+			              } else {
+			                // 分块不存在或不完整，重新发送
+			                deferred.resolve();
+			              }
+			            }
+			          }
+			        );
+			        // 发送文件md5字符串到后台
+			        me.owner.options.formData.fileMd5 = fileMd5;
+			        return deferred.promise();
+				},
+				afterSendFile : function() {
+					// 通知合并分块
+					$.ajax({
+					    type:"POST",
+					    url:"<%=path%>/system/bigfile/merge?action=mergeChunks",
+					    data:{
+					      fileMd5:fileMd5
+					    },
+					    success:function(response){
+					    
+					    }
+					  }
+					);
+				}
+			});
+			
+			// 上传基本配置
+			var uploader = WebUploader.create({
+				 swf:"js/Uploader.swf",
+				 //分块文件上传地址
+				 server:"<%=path%>/system/bigfile/up",
+				 pick:"#filePicker",
+				 //选完文件后，是否自动上传
+				 auto:true,
+				 //文件拖拽区域
+				 dnd:"#dndArea",
+				 disableGlobalDnd:true,
+				 //文件粘贴区域
+				 paste:"#uploader",
+				 
+				 // 分块上传设置
+				 // 是否分块
+				 chunked:true,
+				 // 每块文件大小（默认5M）
+				 chunkSize:5*1024*1024,
+				 // 开启几个并非线程（默认3个）
+				 threads:3,
+				 // 在上传当前文件时，准备好下一个文件
+				 prepareNextFile:true
+			});
+			
+
+	 	})
+	</script>
+  </body>
+</html>

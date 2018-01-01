@@ -1,0 +1,470 @@
+package com.sctgz.platform.manage;
+
+import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import spark.annotation.Auto;
+
+import com.mysql.jdbc.StringUtils;
+import com.sctgz.HkdApp.service.EvaluateInfoService;
+import com.sctgz.HkdApp.service.impl.EvaluateInfoServiceImpl;
+import com.sctgz.platform.entity.MenuInfo;
+import com.sctgz.platform.entity.UserInfo;
+import com.sctgz.platform.entity.VipInfo;
+import com.sctgz.platform.service.IVipService;
+import com.sctgz.platform.service.impl.VipServiceImpl;
+import com.sctgz.util.CacheUtil;
+import com.sctgz.util.DateTimeUtil;
+import com.sctgz.util.JsonUtil;
+import com.sctgz.util.MD5;
+import com.sctgz.util.RSAUtil;
+import com.sctgz.util.ReqToEntityUtil;
+import com.sctgz.util.ReqToMapUtil;
+
+import dbengine.util.Page;
+
+public class VipMng {
+
+	@Auto(name=VipServiceImpl.class)
+	private IVipService vipService;
+	@Auto(name=EvaluateInfoServiceImpl.class)
+	private EvaluateInfoService evaluateInfoService;
+	public String saveVip(String sourceId, boolean closeConn, HttpServletRequest request, HttpServletResponse response){
+		VipInfo vip = (VipInfo) ReqToEntityUtil.reqToEntity(request, VipInfo.class);
+		Map<String, String> map =  new HashMap<String, String>();
+		if (vip==null){
+			map.put("status", "-1");
+			map.put("msg", "未获取到任何信息");
+			return JsonUtil.ObjToJson(map);
+		}
+		if (vip.getId()==null){
+			//判断是否注册
+			Map<String, String> params = new HashMap<String, String>();
+			params.put("loginName", vip.getLoginName());
+			VipInfo tempVip = vipService.findVipInfo("jdbcread", false, params);
+			if (tempVip != null){
+				map.put("status", "-7");
+				map.put("msg", "该手机号已被注册");
+				return JsonUtil.ObjToJson(map);
+			}
+			//验证码判断
+			String passCode = request.getParameter("passCode");
+			if(!StringUtils.isNullOrEmpty(passCode)){
+				Map<String, Object> passCodeMap = CacheUtil.getInstance().getSmsPassCodeCache().get(vip.getLoginName());
+				if(passCodeMap != null && !StringUtils.isNullOrEmpty((String)passCodeMap.get("passcode"))){
+					if(new Date().getTime() > (Long)passCodeMap.get("expiration")){
+						map.put("status", "-4");
+						map.put("msg", "验证码过期，请重新获取验证码");
+						return JsonUtil.ObjToJson(map);
+					}
+					if(!passCodeMap.get("passcode").equals(passCode)){
+						map.put("status", "-5");
+						map.put("msg", "验证码错误");
+						return JsonUtil.ObjToJson(map);
+					}
+				}else{
+					map.put("status", "-3");
+					map.put("msg", "请重新获取验证码");
+					return JsonUtil.ObjToJson(map);
+				}
+			}else{
+				map.put("status", "-2");
+				map.put("msg", "必须填写验证码");
+				return JsonUtil.ObjToJson(map);
+			}
+			
+			vip.setVipUUID(UUID.randomUUID().toString());
+			if (!StringUtils.isNullOrEmpty(vip.getVipPwd())){
+				vip.setVipPwd((new MD5()).getMD5ofStr(vip.getVipPwd()));
+			}else{
+				vip.setVipPwd((new MD5()).getMD5ofStr("000000"));
+			}
+			
+		}
+		
+		if (vipService.saveOrUpVip(sourceId, closeConn, vip)){
+			map.put("status", "1");
+			map.put("msg", "成功");
+			return JsonUtil.ObjToJson(map);
+		}else{
+			map.put("status", "-6");
+			map.put("msg", "失败");
+			return JsonUtil.ObjToJson(map);
+		}
+		
+	}
+	
+	public String updateVipInfo(String sourceId, boolean closeConn, HttpServletRequest request, HttpServletResponse response){
+		VipInfo vip = (VipInfo) ReqToEntityUtil.reqToEntity(request, VipInfo.class);
+		Map<String, String> map =  new HashMap<String, String>();
+		//便于会员添加或修改支付宝账号时使用
+		String account = request.getParameter("account");
+		if(account != null && !"".equals(account) && !"null".equals(account)) {
+			account = RSAUtil.decryptData(false, account, false);
+			if(!account.equals(vip.getAlipayAccount())) {
+				map.put("status", "-3");
+				map.put("msg", "支付宝账号被篡改");
+				return JsonUtil.ObjToJson(map);
+			}
+		}
+		if (vip==null){
+			map.put("status", "-1");
+			map.put("msg", "未获取到任何信息");
+			return JsonUtil.ObjToJson(map);
+		}
+		if (vip.getId()==null||vip.getVipUUID()==null){
+			map.put("status", "-2");
+			map.put("msg", "未获取到任何定位信息");
+			return JsonUtil.ObjToJson(map);
+		}
+		Field[] fields = vip.getClass().getDeclaredFields();
+		String upFields = "";
+		List<Object> params = new ArrayList<Object>(); 
+		for (Field field : fields) {
+			String fieldName = field.getName();
+			if ("serialVersionUID".equals(field.getName()))//自动生成的一个serialVersionUID序列化版本比较值
+				continue;
+			String v = request.getParameter(fieldName);
+			if (v == null || v.trim().equals("")){
+				continue;
+			}
+			upFields += fieldName+" = ? , ";
+			params.add(v);
+		}
+		upFields = upFields.substring(0,upFields.length()-2);
+		if (vipService.updateVipInfo(sourceId, closeConn, upFields, params, String.valueOf(vip.getId()), vip.getVipUUID())){
+			map.put("status", "1");
+			map.put("msg", "未获取到任何信息");
+			return JsonUtil.ObjToJson(map);
+		}else{
+			map.put("status", "-3");
+			map.put("msg", "数据更新失败");
+			return JsonUtil.ObjToJson(map);
+		}
+		
+	}
+	public String findVipByUUID(String sourceId, boolean closeConn, HttpServletRequest request, HttpServletResponse response){
+		String vipUUID = request.getParameter("vipUUID");
+		if (!StringUtils.isNullOrEmpty(vipUUID)){
+			VipInfo vip = vipService.findVipInfoByUUID(sourceId, closeConn, vipUUID);
+			if (vip!=null){
+				return JsonUtil.ObjToJson(vip);
+			}else{
+				return JsonUtil.ObjToJson("[]");
+			}
+		}else{
+			return JsonUtil.ObjToJson("[]");
+		}
+		
+	}
+	public String findVipByOrderUUID(String sourceId, boolean closeConn, HttpServletRequest request, HttpServletResponse response){
+		String orderUUID = request.getParameter("orderUUID");
+		if (!StringUtils.isNullOrEmpty(orderUUID)){
+			VipInfo vip = vipService.findVipInfoByOrderUUID(sourceId, closeConn, orderUUID);
+			if (vip!=null){
+				return JsonUtil.ObjToJson(vip);
+			}else{
+				return JsonUtil.ObjToJson("[]");
+			}
+		}else{
+			return JsonUtil.ObjToJson("[]");
+		}
+		
+	}
+	public String findVipByMap(String sourceId, boolean closeConn, HttpServletRequest request, HttpServletResponse response){
+		Map<String, String> findMap = ReqToMapUtil.reqToMap(request, UserInfo.class);
+		Map<String, Object> map = new HashMap<String, Object>();
+		VipInfo vip = vipService.findVipInfo(sourceId, closeConn, findMap);
+		if (vip!=null){
+			map.put("status", "1");
+			map.put("msg", "成功");
+			map.put("info", vip);
+		}else{
+			map.put("status", "-1");
+			map.put("msg", "失败");
+		}
+		return JsonUtil.ObjToJson(map);
+		
+	}
+	/**
+	 * 查询会员列表
+	 * @param sourceId
+	 * @param closeConn
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	public String findVipList(String sourceId, boolean closeConn, HttpServletRequest request, HttpServletResponse response){
+		Map<String, String> findMap = ReqToMapUtil.reqToMap(request, VipInfo.class);
+		Page page = (Page) ReqToEntityUtil.reqToEntity(request, Page.class);
+		List<VipInfo> list = vipService.findVipInfoList(sourceId, closeConn, page, findMap);
+		if (page!=null){
+			return JsonUtil.ObjToJson(page);
+		}else if (list!=null){
+			return JsonUtil.ObjToJson(list);
+		}else{
+			return JsonUtil.ObjToJson("[]");
+		}
+		
+	}
+	/**
+	 * 会员登陆
+	 */
+	public String VipLogin(String sourceId, boolean closeConn, HttpServletRequest request, HttpServletResponse response) {
+		String loginName = request.getParameter("loginName");
+		String vipPwd = request.getParameter("vipPwd");
+		Map<String, Object> map = new HashMap<String, Object>();
+		if (loginName == null || "".equals(loginName)) {
+			map.put("status", "-1");//失败，会员为空
+			map.put("msg", "请输入手机号");
+			return JsonUtil.ObjToJson(map);
+		}
+		if (vipPwd == null || "".equals(vipPwd)) {
+			map.put("status", "-2");// 失败，密码为空
+			map.put("msg", "请输入密码");
+			return JsonUtil.ObjToJson(map);
+		}
+		loginName = RSAUtil.decryptData(false, loginName, false);
+		vipPwd = RSAUtil.decryptData(false, vipPwd, false);
+		System.out.println(loginName);
+		System.out.println(vipPwd);
+		Map<String, String> findMap = new HashMap<String, String>();
+		findMap.put("loginName", loginName);
+		findMap.put("vipPwd", (new MD5()).getMD5ofStr(vipPwd));
+		// 查会员信息
+		VipInfo vip = vipService.findVipInfo(sourceId, closeConn, findMap);
+
+		if (vip == null) {
+			map.put("status", "-3");// 会员名或密码错误
+			map.put("msg", "手机号或密码错误");
+			return JsonUtil.ObjToJson(map);
+		}
+		if ("2".equals(vip.getVipStatus())) {
+			map.put("status", "-4");// 会员已注销
+			map.put("msg", "手机号已注销");
+			return JsonUtil.ObjToJson(map);
+		}
+		if ("3".equals(vip.getVipStatus())) {
+			map.put("status", "-5");// 会员已禁用
+			map.put("msg", "手机号已禁用");
+			return JsonUtil.ObjToJson(map);
+		}
+		// 查登陆人所有的菜单权限
+		List<MenuInfo> miList = vipService.findMenuByVipUUID(sourceId, closeConn, vip.getVipUUID(), null);
+		String permissionStr = "";
+		if(miList!=null && miList.size()>0){
+			for (MenuInfo mi : miList) {
+				if (!"".equals(permissionStr)) {
+					permissionStr += "," + mi.getMenuPermission();
+				} else {
+					permissionStr += mi.getMenuPermission();
+				}
+			}
+		}
+		// 将权限信息存入缓存中
+		map.put("permissionStr", permissionStr);
+		// 将权限信息存入session中
+		request.getSession().setAttribute("permissionStr", permissionStr);
+
+		map.put("vipinfo", vip);
+		request.getSession().setAttribute("vipinfo", vip);
+		vip.setLoginTime(DateTimeUtil.formatDateTime(new Date(), "yyyy-MM-dd HH:mm:ss"));
+		vip.setLoginNum(vip.getLoginNum() + 1);
+		// 修改会员的登陆时间和次数
+		vipService.saveOrUpVip(sourceId, closeConn, vip);
+		//生成令牌
+		String token = UUID.randomUUID().toString();
+		//缓存设置令牌生成时间
+		//CacheUtil.getInstance().setTokenTime(token, new Date());	
+		//令牌信息存入session
+		request.getSession().setAttribute("token", token);
+		//令牌存入缓存
+		map.put("token", token);
+		//缓存设置登陆成功状态
+		map.put("status", "1");//登陆成功
+		map.put("msg", "登陆成功!");//登陆成功
+		//缓存中设置登陆信息对象
+		CacheUtil.getInstance().setTokenObject(token, map);
+		return JsonUtil.ObjToJson(map);// 登陆成功
+	}
+	public String upVipPwd(String sourceId, boolean closeConn, HttpServletRequest request, HttpServletResponse response){
+		String vipUUID = request.getParameter("vipUUID");
+		String oldPwd = request.getParameter("oldPwd");
+		String newPwd = request.getParameter("newPwd");
+		Map<String, String> map = new HashMap<String, String>();
+		if (!StringUtils.isNullOrEmpty(vipUUID)&&!StringUtils.isNullOrEmpty(oldPwd)&&!StringUtils.isNullOrEmpty(newPwd)){
+				newPwd = (new MD5()).getMD5ofStr(newPwd);
+				oldPwd = (new MD5()).getMD5ofStr(oldPwd);
+			if (vipService.upVipPwd(sourceId, closeConn, vipUUID, oldPwd, newPwd)){
+				map.put("status", "1");
+				map.put("msg", "成功");
+				return JsonUtil.ObjToJson(map);
+			}else{
+				map.put("status", "0");
+				map.put("msg", "失败");
+				return JsonUtil.ObjToJson(map);
+			}
+		}else{
+			map.put("status", "0");
+			map.put("msg", "未获取到任何信息");
+			return JsonUtil.ObjToJson(map);
+		}
+		
+	}
+	public String checkVipMobileExit(String sourceId, boolean closeConn, HttpServletRequest request, HttpServletResponse response){
+		String vipMobile = request.getParameter("vipMobile");
+		Map<String, String> map = new HashMap<String, String>();
+		if (!StringUtils.isNullOrEmpty(vipMobile)){
+			if (vipService.findVipMobileExists(sourceId, closeConn, vipMobile)){
+				map.put("status", "1");
+				map.put("msg", "存在");
+				return JsonUtil.ObjToJson(map);
+			}else{
+				map.put("status", "0");
+				map.put("msg", "不存在");
+				return JsonUtil.ObjToJson(map);
+			}
+		}else{
+			map.put("status", "0");
+			map.put("msg", "未获取到任何信息");
+			return JsonUtil.ObjToJson(map);
+		}
+		
+	}
+	public String delVip(String sourceId, boolean closeConn, HttpServletRequest request, HttpServletResponse response){
+		String vipUUID = request.getParameter("vipUUID");
+		Map<String, String> map =  new HashMap<String, String>();
+		if (!StringUtils.isNullOrEmpty(vipUUID)){
+			if (vipService.deleteVip(sourceId, closeConn, vipUUID)){
+				map.put("status", "1");
+				map.put("msg", "成功");
+				return JsonUtil.ObjToJson(map);
+			}else{
+				map.put("status", "0");
+				map.put("msg", "失败");
+				return JsonUtil.ObjToJson(map);
+			}
+		}else{
+			map.put("status", "0");
+			map.put("msg", "未获取到任何信息");
+			return JsonUtil.ObjToJson(map);
+		}
+		
+	}
+	
+	public String upVipStatus(String sourceId, boolean closeConn, HttpServletRequest request, HttpServletResponse response){
+		String vipUUID = request.getParameter("vipUUID");
+		String status = request.getParameter("status");
+		Map<String, String> map = new HashMap<String, String>();
+		if (!StringUtils.isNullOrEmpty(vipUUID)&&!StringUtils.isNullOrEmpty(status)){
+			if (vipService.updateVipStatus(sourceId, closeConn, vipUUID, status)){
+				map.put("status", "1");
+				map.put("msg", "成功");
+				return JsonUtil.ObjToJson(map);
+			}else{
+				map.put("status", "0");
+				map.put("msg", "失败");
+				return JsonUtil.ObjToJson(map);
+			}
+		}else{
+			map.put("status", "0");
+			map.put("msg", "未获取到任何信息");
+			return JsonUtil.ObjToJson(map);
+		}
+		
+	}
+	public String findVipMenuByVipUUID(String sourceId, boolean closeConn, HttpServletRequest request, HttpServletResponse response){
+		String vipUUID = request.getParameter("vipUUID");
+		String menuParentCode = request.getParameter("menuParentCode");
+		if (!StringUtils.isNullOrEmpty(vipUUID)&&!StringUtils.isNullOrEmpty(menuParentCode)){
+			List<MenuInfo> list = vipService.findMenuByVipUUID(sourceId, closeConn, vipUUID, menuParentCode);
+			if (list.size()>0){
+				return JsonUtil.ObjToJson(list);
+			}else{
+				return JsonUtil.ObjToJson("[]");
+			}
+		}else{
+			return JsonUtil.ObjToJson("[]");
+		}
+	}
+	public String findVipCount(String sourceId, boolean closeConn, HttpServletRequest request, HttpServletResponse response){
+		return JsonUtil.ObjToJson(vipService.findVipCount(sourceId, closeConn));
+		
+	}
+	public String findVipLoginNameExit(String sourceId, boolean closeConn, HttpServletRequest request, HttpServletResponse response){
+		String loginName = request.getParameter("loginName");
+		Map<String, String> map = new HashMap<String, String>();
+		if (!StringUtils.isNullOrEmpty(loginName)){
+			if (vipService.findLoginNameExist(sourceId, closeConn, loginName)){
+				map.put("status", "1");
+				map.put("msg", "存在");
+				return JsonUtil.ObjToJson(map);
+			}else{
+				map.put("status", "0");
+				map.put("msg", "不存在");
+				return JsonUtil.ObjToJson(map);
+			}
+		}else{
+			map.put("status", "0");
+			map.put("msg", "未获取到任何信息");
+			return JsonUtil.ObjToJson(map);
+		}
+	}
+	public String upVipPwdByPassCode(String sourceId, boolean closeConn, HttpServletRequest request, HttpServletResponse response){
+		String loginName = request.getParameter("loginName");
+		String vipPwd = request.getParameter("vipPwd");
+		String passCode = request.getParameter("passCode");
+		Map<String, String> map = new HashMap<String, String>();
+		if(StringUtils.isNullOrEmpty(loginName)){
+			map.put("status", "-1");
+			map.put("msg", "请填写手机号");
+			return JsonUtil.ObjToJson(map);
+		}
+		if(StringUtils.isNullOrEmpty(vipPwd)){
+			map.put("status", "-2");
+			map.put("msg", "请填写新密码");
+			return JsonUtil.ObjToJson(map);
+		}
+		if(StringUtils.isNullOrEmpty(passCode)){
+			map.put("status", "-3");
+			map.put("msg", "请填写验证码");
+			return JsonUtil.ObjToJson(map);
+		}
+		vipPwd = RSAUtil.decryptData(false, vipPwd, false);
+		Map<String, Object> passCodeMap = CacheUtil.getInstance().getSmsPassCodeCache().get(loginName);
+		if(passCodeMap != null && !StringUtils.isNullOrEmpty((String)passCodeMap.get("passcode"))){
+			if(new Date().getTime() > (Long)passCodeMap.get("expiration")){
+				map.put("status", "-4");
+				map.put("msg", "验证码过期，请重新获取验证码");
+				return JsonUtil.ObjToJson(map);
+			}
+			if(!passCodeMap.get("passcode").equals(passCode)){
+				map.put("status", "-5");
+				map.put("msg", "验证码错误");
+				return JsonUtil.ObjToJson(map);
+			}
+		}else{
+			map.put("status", "-6");
+			map.put("msg", "请重新获取验证码");
+			return JsonUtil.ObjToJson(map);
+		}
+		vipPwd = (new MD5()).getMD5ofStr(vipPwd);
+		if (vipService.findPwd(sourceId, closeConn, vipPwd, loginName)){
+			map.put("status", "1");
+			map.put("msg", "重置密码成功");
+			return JsonUtil.ObjToJson(map);
+		}else{
+			map.put("status", "-7");
+			map.put("msg", "找回密码失败");
+			return JsonUtil.ObjToJson(map);
+		}
+	}
+}

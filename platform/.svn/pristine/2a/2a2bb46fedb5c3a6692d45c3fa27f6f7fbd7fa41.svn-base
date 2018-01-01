@@ -1,0 +1,247 @@
+package com.sctgz.platform.action;
+
+import gov.nist.isg.pyramidio.cli.Main;
+
+import java.io.File;
+import java.io.FileFilter;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.nio.channels.FileChannel;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import javax.servlet.http.HttpServletRequest;
+
+import org.apache.commons.fileupload.FileItem;
+import org.apache.commons.fileupload.disk.DiskFileItemFactory;
+import org.apache.commons.fileupload.servlet.ServletFileUpload;
+import org.apache.commons.io.FileUtils;
+
+import spark.Request;
+import spark.Response;
+import spark.Route;
+import spark.Spark;
+import spark.servlet.ISparkApplication;
+
+import com.sctgz.util.JsonUtil;
+
+public class BigFileAction implements ISparkApplication {
+	private String serverPath = "/web/bigFile";
+	private static String getPhysicalPath(HttpServletRequest req, String path) {
+		String realPath = req.getSession().getServletContext().getRealPath("/" + path);
+		return realPath;
+	}
+	@Override
+	public void run() {
+		/**
+		 * 大文件分段上传的实现
+		 * 分段文件保存到以大文件的md5值命名的文件夹中，并以文件块序号命名，便于合并
+		 * 前端使用WebUploader库对文件进行分段
+		 */
+		Spark.post(new Route("/system/bigfile/up", true, "jdbcwrite") {
+			@Override
+			public Object handle(Request request, Response response) throws Exception {
+				response.raw().getWriter().append("Served at: ").append(request.raw().getContextPath());
+				System.out.println("开始上传文件");
+				// 1.创建DiskFileItemFactory对象，配置缓存用
+				DiskFileItemFactory diskFileItemFactory = new DiskFileItemFactory();
+				// 2. 创建 ServletFileUpload对象
+				ServletFileUpload servletFileUpload = new ServletFileUpload(diskFileItemFactory);
+				// 3. 设置文件名称编码
+				servletFileUpload.setHeaderEncoding("utf-8");
+				// 4. 开始解析文件
+				// 文件md5获取的字符串
+				String fileMd5 = null;
+				// 文件的索引
+				String chunk = null;
+				try {
+					List<FileItem> items = servletFileUpload.parseRequest(request.raw());
+					for (FileItem fileItem : items) {
+						if (fileItem.isFormField()) { // >> 普通数据
+							String fieldName = fileItem.getFieldName();
+							if ("info".equals(fieldName)) {
+								String info = fileItem.getString("utf-8");
+								System.out.println("info:" + info);
+							}
+							if ("fileMd5".equals(fieldName)) {
+								fileMd5 = fileItem.getString("utf-8");
+								System.out.println("fileMd5:" + fileMd5);
+							}
+							if ("chunk".equals(fieldName)) {
+								chunk = fileItem.getString("utf-8");
+								System.out.println("chunk:" + chunk);
+							}
+						} else {//文件
+							/*
+								// 1. 获取文件名称
+						      	String name = fileItem.getName();
+						      	// 2. 获取文件的实际内容
+						      	InputStream is = fileItem.getInputStream();
+						      	// 3. 保存文件
+						      	FileUtils.copyInputStreamToFile(is, new File(serverPath + "/" + name));
+					      	*/
+							// 如果文件夹没有创建文件夹
+							File file = new File(getPhysicalPath(request.raw(), serverPath+"/" + fileMd5));
+							if (!file.exists()) {
+								file.mkdirs();
+							}
+							// 保存文件
+							File chunkFile = new File(getPhysicalPath(request.raw(), serverPath+"/" + fileMd5 + "/" + chunk));
+							FileUtils.copyInputStreamToFile(fileItem.getInputStream(), chunkFile);
+							System.out.println("分片文件"+chunk+"上传成功");
+						}
+					}
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+
+				//getWriter和getOutputStream不能同时使用，只能二选一,为了兼容spark，reset下
+				response.raw().reset();
+				return "";
+
+			}
+		});
+
+
+		/**
+		 * 大文件合并和断点续传检测
+		 */
+		Spark.post(new Route("/system/bigfile/merge",true,"jdbcwrite") {	
+			@Override
+			public Object handle(Request request, Response response) throws Exception {
+				Map<String, Object> result = new HashMap<String, Object>();
+
+				String action = request.raw().getParameter("action");
+				if ("mergeChunks".equals(action)) {//合并分片文件
+					System.out.println("开始合并后台文件");
+					// 获得需要合并的目录
+					String fileMd5 = request.raw().getParameter("fileMd5");
+					// 通过文件名，生成对应格式的文件
+					String fileName = request.raw().getParameter("fileName");
+					// 读取目录所有文件
+					File f = new File(getPhysicalPath(request.raw(), serverPath+"/" + fileMd5));
+					File[] fileArray = f.listFiles(new FileFilter() {
+						// 排除目录，只要文件
+						@Override
+						public boolean accept(File pathname) {
+							if (pathname.isDirectory()) {
+								return false;
+							}
+							return true;
+						}
+					});
+					// 转成集合，便于排序
+					List<File> fileList = new ArrayList<File>(Arrays.asList(fileArray));
+					// 从小到大排序
+					Collections.sort(fileList, new Comparator<File>() {
+						@Override
+						public int compare(File o1, File o2) {
+							if (Integer.parseInt(o1.getName()) < Integer.parseInt(o2.getName())) {
+								return -1;
+							}
+							return 1;
+						}
+					});
+					// 新建保存文件
+					String fileExt = fileName.substring(fileName.lastIndexOf("."));
+					//以md5作为文件名，可能出现两个不同文件而md5值一致的极端情况
+//					String outputFileName = UUID.randomUUID().toString();
+//					File outputFile = new File(serverPath+"/" + outputFileName + ".zip");
+//					File outputFile = new File(getPhysicalPath(request.raw(), serverPath+"/" + outputFileName + fileExt));
+					//不考虑极端情况，以md5作为文件名（便于后面妙传检测，也可以UUID作为文件名，md5值存入数据库判断）
+					File outputFile = new File(getPhysicalPath(request.raw(), serverPath+"/" + fileMd5 + fileExt));
+					// 创建文件
+					outputFile.createNewFile();
+					// 输出流
+					FileOutputStream fileOutputStream = new FileOutputStream(outputFile);
+					FileChannel outChannel = fileOutputStream.getChannel();
+					// 合并
+					FileChannel inChannel;
+					for (File file : fileList) {
+						inChannel = new FileInputStream(file).getChannel();
+						inChannel.transferTo(0, inChannel.size(), outChannel);
+						inChannel.close();
+						// 删除分片
+						file.delete();
+					}
+					// 关闭流
+					fileOutputStream.close();
+					outChannel.close();
+					// 清除文件加
+					File tempFile = new File(getPhysicalPath(request.raw(), serverPath+"/" + fileMd5));
+					if (tempFile.isDirectory() && tempFile.exists()) {
+						tempFile.delete();
+					}
+					result.put("status", "1");
+					result.put("msg", "合并文件成功");
+					result.put("succTime", new Date().getTime());
+					System.out.println("合并文件成功");
+					//结果存入数据库
+					//省略...
+					
+					//分割图片
+					System.out.println("开始分割图片：...");
+					System.out.println("要分割的图片为："+outputFile.getPath());
+					//分割图片输出路径
+					File pyramidioOutputFile = new File(getPhysicalPath(request.raw(), serverPath+"/" + fileMd5));
+					System.out.println("分割后保存的路径为："+pyramidioOutputFile.getPath());
+			        Main.main(new String[]{
+		                "-i",
+		                outputFile.getPath(),
+		                "-o",
+		                "file:///"+pyramidioOutputFile.getPath().replaceAll("\\\\", "/")
+		            });
+			        System.out.println("分割图片成功");
+			        //**分割结束**
+				}else if ("checkChunk".equals(action)) {//分片文件检测
+					System.out.println("开始检测该分片文件是否存在");
+					// 校验分片文件是否已经上传并返回结果给前端
+					// 文件唯一表示               
+					String fileMd5 = request.raw().getParameter("fileMd5");
+					// 当前分块下标
+					String chunk = request.raw().getParameter("chunk");
+					// 当前分块大小
+					String chunkSize = request.raw().getParameter("chunkSize");
+					// 找到分块文件
+					File checkFile = new File(getPhysicalPath(request.raw(), serverPath+"/" + fileMd5 + "/" + chunk));
+					// 检查文件是否存在，且大小一致
+					if (checkFile.exists() && checkFile.length() == Integer.parseInt((chunkSize))) {
+						result.put("status", "2");
+						result.put("ifExist", "1");
+						result.put("msg", "该文件存在，大小一致");
+						System.out.println("分片文件"+chunk+"存在");
+					} else {
+						result.put("status", "-1");
+						result.put("ifExist", "0");
+						result.put("msg", "该文件不存在或大小不一致");
+						System.out.println("分片文件"+chunk+"不存在");
+					}
+				}else if ("checkFile".equals(action)){ //文件检测（秒传实现）
+					System.out.println("正在妙传检测");
+					// 校验上传的文件是否已经上传并返回结果给前端
+					// 文件唯一表示               
+					String fileMd5 = request.raw().getParameter("fileMd5");
+					File checkFile = new File(getPhysicalPath(request.raw(), serverPath+"/" + fileMd5));
+					if (checkFile.exists()){
+						result.put("status", "3");
+						result.put("ifExist", "1");
+						result.put("msg", "该文件存在");
+					}else{
+						result.put("status", "-2");
+						result.put("ifExist", "0");
+						result.put("msg", "该文件不存在");
+					}
+				}
+
+				return JsonUtil.ObjToJson(result);
+
+			}
+		});
+	}
+}

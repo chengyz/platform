@@ -1,0 +1,19 @@
+package com.sctgz.HkdApp.action;
+
+import spark.annotation.Auto;
+import spark.servlet.ISparkApplication;
+
+import com.sctgz.HkdApp.manage.TimedTaskMng;
+/**
+ * 订单结算任务的action
+ * @author chengyz
+ *
+ */
+public class PayTimedAction implements ISparkApplication{
+	@Auto(name=TimedTaskMng.class)
+	private TimedTaskMng timedTaskMng;
+	@Override
+	public void run() {
+		timedTaskMng.updateStatus();//支付超时的订单改为失效
+	}
+}

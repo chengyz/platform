@@ -1,0 +1,56 @@
+package com.sctgz.HkdApp.action;
+
+import com.sctgz.HkdApp.manage.LocationMng;
+
+import spark.Request;
+import spark.Response;
+import spark.Route;
+import spark.Spark;
+import spark.annotation.Auto;
+import spark.servlet.ISparkApplication;
+/**
+ * 
+ * 会员坐标定位相关Action
+ * @author hshzh
+ * @date 2017-3-14 下午2:04:31
+ */
+public class LocationAction implements ISparkApplication{
+
+	@Auto(name=LocationMng.class)
+	private LocationMng locationMng;
+	
+	@Override
+	public void run() {
+		/**
+		 * 查询指定直线距离内的订单（距收货地址和发货地址的距离，单位米）
+		 */
+		Spark.post(new Route("/hkdapp/location/findOrders",true,"jdbcread"){
+			@Override
+			public Object handle(Request request,Response response) throws Exception{
+				return locationMng.findOrders("jdbcread",false, request.raw(), response.raw());
+			}
+		});
+		
+		/**
+		 * 缓存设置会员当前坐标点
+		 */
+		Spark.post(new Route("/hkdapp/location/setVipCoord",true,"jdbcread"){
+			@Override
+			public Object handle(Request request,Response response) throws Exception{
+				return locationMng.setVipCoord("jdbcread",false, request.raw(), response.raw());
+			}
+		});
+		
+		/**
+		 * 获取当前会员坐标点
+		 */
+		Spark.post(new Route("/hkdapp/location/getVipCoord",true,"jdbcread"){
+			@Override
+			public Object handle(Request request,Response response) throws Exception{
+				return locationMng.getVipCoord("jdbcread",false, request.raw(), response.raw());
+			}
+		});
+		
+	}
+
+}

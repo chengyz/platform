@@ -1,0 +1,127 @@
+package com.test.service.impl;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+import spark.annotation.Auto;
+
+import com.test.entity.CertificateInfo;
+import com.test.service.CertificateInfoService;
+
+import dbengine.dao.EntityDao;
+import dbengine.dao.SqlDao;
+import dbengine.util.Page;
+/**
+ * 会员实名认证信息的service接口实现
+ * @author chengyz
+ *
+ */
+public class CertificateInfoServiceImpl implements CertificateInfoService {
+	@Auto(name=SqlDao.class)
+	private SqlDao sqldao;
+	@Auto(name=EntityDao.class)
+	private EntityDao entityDao;
+	/**
+	 * 通过会员查询实名认证信息
+	 */
+	@Override
+	public CertificateInfo findCertificate(String sourceId, boolean closeConn, String vipUUID) {
+		if(vipUUID == null || "".equals(vipUUID)){
+			return null;
+		}
+		StringBuilder sql = new StringBuilder();
+		sql.append("select * from certificate_info where vipUUID = '").append(vipUUID).append("'");
+		return (CertificateInfo)sqldao.findEntityBySql(sourceId, sql.toString(), CertificateInfo.class, closeConn, null);
+	}
+	/**
+	 * 删除实名认证信息
+	 */
+	@Override
+	public boolean deleteCertificate(String sourceId, boolean closeConn, String certUUID) {
+		if(certUUID == null || "".equals(certUUID)){
+			return false;
+		}
+		StringBuilder sql = new StringBuilder();
+		sql.append("delete from certificate_info where certUUID = '").append(certUUID).append("'");
+		return sqldao.executeSql(sourceId, sql.toString(), closeConn, null);
+	}
+	/**
+	 * 查询实名认证信息列表
+	 */
+	@Override
+	public List<CertificateInfo> findCertificateList(String sourceId, boolean closeConn, Page page,Map<String, String> findMap) {
+		StringBuilder sql = new StringBuilder();
+		List<String> params = new ArrayList<String>();
+		sql.append("select * from certificate_info where 1 = 1 ");
+		if(findMap != null){
+			if(findMap.get("vipUUID") != null && !"".equals(findMap.get("vipUUID"))){
+				sql.append("and vipUUID = '").append(findMap.get("vipUUID").replace("'", "")).append("'");//会员UUID
+			}
+			if(findMap.get("trueName") != null && !"".equals(findMap.get("trueName"))){
+				sql.append("and trueName = '").append(findMap.get("trueName").replace("'", "")).append("'");//真实姓名
+			}
+			if(findMap.get("transport") != null && !"".equals(findMap.get("transport"))){
+				sql.append("and transport like '%").append(findMap.get("transport").replace("'", "")).append("%'");//交通工具
+			}
+			if(findMap.get("vipPhoneNumber") != null && !"".equals(findMap.get("vipPhoneNumber"))){
+				sql.append("and vipPhoneNumber = ? ");//会员手机号
+				params.add(findMap.get("vipPhoneNumber"));
+			}
+			if(findMap.get("startTime") != null && !"".equals(findMap.get("startTime"))){
+				sql.append("and createTime  >= ? ");
+				params.add(findMap.get("startTime"));
+			}
+			if(findMap.get("endTime") != null && !"".equals(findMap.get("endTime"))){
+				sql.append("and createTime <= ? ");
+				params.add(findMap.get("endTime"));
+			}
+			if(findMap.get("phoneNumber") != null && !"".equals(findMap.get("phoneNumber"))){
+				sql.append("and phoneNumber = ? ");//本人手机号
+				params.add(findMap.get("phoneNumber"));
+			}
+			if(findMap.get("status") != null && !"".equals(findMap.get("status"))){
+				sql.append("and status = ?");
+				params.add(findMap.get("status"));
+			}
+			if(findMap.get("userName") != null && !"".equals(findMap.get("userName"))){
+				sql.append("and userName = ?");
+				params.add(findMap.get("userName"));
+			}
+		}
+		if(page == null){
+			return sqldao.findListBySql(sourceId, sql.toString(), CertificateInfo.class, closeConn, params);
+		}else{
+			return sqldao.findPageByMysql(sourceId, sql.toString(), closeConn, CertificateInfo.class, page, params);
+		}
+	}
+	/**
+	 * 保存或修改实名认证信息
+	 */
+	@Override
+	public boolean saveOrUpCertificate(String sourceId, boolean closeConn, CertificateInfo certificateInfo) {
+		if(certificateInfo == null){
+			return false;
+		}
+		if(certificateInfo.getId() == null){
+			return entityDao.saveEntity(sourceId, certificateInfo, closeConn);
+		}else{
+			return entityDao.updateEntity(sourceId, certificateInfo, closeConn);
+		}
+		
+	}
+	/**
+	 * 通过认证UUID查询实名认证信息
+	 */
+	@Override
+	public CertificateInfo findCertificateByUUID(String sourceId, boolean closeConn, String certUUID) {
+		if(certUUID == null || "".equals(certUUID)){
+			return null;
+		}
+		StringBuilder sql = new StringBuilder();
+		sql.append("select * from certificate_info where certUUID = '").append(certUUID).append("'");
+		return (CertificateInfo)sqldao.findEntityBySql(sourceId, sql.toString(), CertificateInfo.class, closeConn, null);
+	}
+
+
+}

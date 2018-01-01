@@ -1,0 +1,123 @@
+package com.test.service.impl;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+import spark.annotation.Auto;
+
+import com.test.entity.BusinessInfo;
+import com.test.service.IBusinessService;
+
+import dbengine.dao.EntityDao;
+import dbengine.dao.SqlDao;
+import dbengine.util.Page;
+
+public class BusinessServiceImpl implements IBusinessService{
+	@Auto(name=SqlDao.class)
+    private SqlDao sqldao;
+	
+	@Auto(name=EntityDao.class)
+	private EntityDao entitydao;
+	
+	
+	@Override
+	public boolean saveOrUpBusiness(String sourceId, boolean closeConn,BusinessInfo busnInfo) throws Exception {
+		try {
+			if(busnInfo==null){
+				return false;
+			}
+			if(busnInfo.getId()==null){
+				//新增，设置uuid
+				busnInfo.setBusinessHot("2");
+				busnInfo.setBusinessUUID(UUID.randomUUID().toString());
+				return entitydao.saveEntity(sourceId, busnInfo, closeConn);
+			}else{
+				//修改
+				return entitydao.updateEntity(sourceId, busnInfo, closeConn);
+			}
+		} catch (Exception e) {
+			throw e;
+		}
+	}
+
+	@Override
+	public BusinessInfo findBusinessInfo(String sourceId, boolean closeConn,String businessUUID) {
+		if(businessUUID==null || "".equals(businessUUID)){
+			return null;
+		}
+		String sql = "select * from business_info where businessUUID= '"+businessUUID.replace("'", "")+"'";
+		return (BusinessInfo)sqldao.findEntityBySql(sourceId, sql, BusinessInfo.class, closeConn, null);
+	}
+
+	@Override
+	public List<BusinessInfo> findBussinessList(String sourceId,boolean closeConn,Page page, Map findMap) {
+		StringBuilder sql = new StringBuilder();
+		sql.append("select * from business_info where 1=1");
+		if(findMap != null){
+			if(findMap.get("businessUUID")!=null && !"".equals(findMap.get("businessUUID"))){
+				sql.append(" and businessUUID = '").append(findMap.get("businessUUID").toString().replace("'", "")).append("'");
+			}
+			if(findMap.get("unitUUID")!=null && !"".equals(findMap.get("unitUUID"))){
+				sql.append(" and unitUUID = '").append(findMap.get("unitUUID").toString().replace("'", "")).append("'");
+			}
+			if(findMap.get("businessName")!=null && !"".equals(findMap.get("businessName"))){
+				sql.append(" and businessName like '%").append(findMap.get("businessName").toString().replace("'", "")).append("%'");
+			}
+			if(findMap.get("businessAddr")!=null && !"".equals(findMap.get("businessAddr"))){
+				sql.append(" and businessAddr like '%").append(findMap.get("businessAddr").toString().replace("'", "")).append("%'");
+			}
+			if(findMap.get("businessHot")!=null && !"".equals(findMap.get("businessHot"))){
+				sql.append(" and businessHot = '").append(findMap.get("businessHot").toString().replace("'", "")).append("'");
+			}
+			if(findMap.get("businessArea")!=null && !"".equals(findMap.get("businessArea"))){
+				sql.append(" and businessArea like '%").append(findMap.get("businessArea").toString().replace("'", "")).append("%'");
+			}
+			if(findMap.get("businessType")!=null && !"".equals(findMap.get("businessType"))){
+				sql.append(" and businessType = '").append(findMap.get("businessType").toString().replace("'", "")).append("'");
+			}
+		}
+		sql.append(" order by businessTime desc ");
+		if(page==null){
+			return (List<BusinessInfo>)sqldao.findListBySql(sourceId, sql.toString(), BusinessInfo.class, closeConn, null);
+		}else{
+			return (List<BusinessInfo>)sqldao.findPageByMysql(sourceId, sql.toString(), closeConn, BusinessInfo.class, page, null);
+		}
+	}
+
+	@Override
+	public boolean delBusinessInfo(String sourceId, boolean closeConn,String businessUUID) {
+		if(businessUUID==null || "".equals(businessUUID)){
+			return false;
+		}else{
+			String sql="delete from business_info where businessUUID='"+businessUUID.replace("'", "")+"'";
+			return sqldao.executeSql(sourceId, sql, closeConn, null);
+		}
+	}
+	/**
+	 * 查询商家的类型和所在的区域
+	 */
+	@Override
+	public Map findTypeAreaList(String sourceId, boolean closeConn) {
+		Map<String,Object> map = new HashMap<String,Object>();
+		StringBuilder sql1 = new StringBuilder();
+		sql1.append("select distinct(businessType) as businessType from business_info");
+		List<Map> types = sqldao.findMapListBysql(sourceId, sql1.toString(), closeConn, null);
+		StringBuilder sql2 = new StringBuilder();
+		sql2.append("select distinct(businessArea) as businessArea from business_info");
+		List<Map> areas = sqldao.findMapListBysql(sourceId, sql2.toString(), closeConn, null);
+		if(areas != null && !"".equals(areas) && areas.get(0).get("businessArea") != null && !"null".equals(areas.get(0).get("businessArea"))){
+			map.put("areas", areas);
+		}else{
+			map.put("areas", "");
+		}
+		if(types != null && !"".equals(types) && types.get(0).get("businessType") != null && !"null".equals(types.get(0).get("businessType"))) {
+			map.put("types", types);
+		}else{
+			map.put("types", "");
+		}
+		return map;
+	}
+
+}

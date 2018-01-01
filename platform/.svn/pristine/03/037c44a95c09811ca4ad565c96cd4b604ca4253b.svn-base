@@ -1,0 +1,43 @@
+/**
+ * 
+ */
+package com.sctgz.HkdApp.service;
+
+import java.util.List;
+import java.util.Map;
+
+import com.sctgz.HkdApp.entity.VipConsumptionRecord;
+
+import dbengine.util.Page;
+
+/**
+ * 会员消费记录service接口
+ * @author chengyz
+ *
+ */
+public interface IVipConsumptionRecordService {
+	/**
+	 * 保存或修改消费记录信息
+	 * @param sourceId
+	 * @param closeConn
+	 * @param t
+	 * @return
+	 */
+	public boolean saveOrUpdate(String sourceId,boolean closeConn,VipConsumptionRecord t);
+	/**
+	 * 通过支付流水号查询会员消费记录
+	 * @param sourceId
+	 * @param closeConn
+	 * @param tradeNo
+	 * @return
+	 */
+	public VipConsumptionRecord findVipConsumptionRecord(String sourceId,boolean closeConn,String tradeNo);
+	/**
+	 * 查询会员消费记录列表
+	 * @param sourceId
+	 * @param closeConn
+	 * @param vipConsumptionRecord
+	 * @return
+	 */
+	public List<VipConsumptionRecord> findVipConsumptionRecordList(String sourceId,boolean closeConn,Page page,Map<String,String> findMap);
+}

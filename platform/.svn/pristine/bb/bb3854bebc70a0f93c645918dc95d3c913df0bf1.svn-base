@@ -1,0 +1,49 @@
+package com.sctgz.util;
+
+import java.net.URLEncoder;
+
+import org.apache.commons.httpclient.HttpClient;
+import org.apache.commons.httpclient.NameValuePair;
+import org.apache.commons.httpclient.methods.PostMethod;
+import org.apache.commons.httpclient.Header;
+/**
+ *短信发送验证码工具类
+ *
+ * @author yanglee
+ *
+ */
+public class SendMsgCodeUtil {
+	public static String SendMsgCode(String userMobile,String code) throws Exception
+	{
+		HttpClient client = new HttpClient();
+		PostMethod post = new PostMethod("http://api.sms.cn/mtutf8/"); 
+		post.addRequestHeader("Content-Type","application/x-www-form-urlencoded;charset=utf-8");//在头文件中设置转码
+		NameValuePair[] data ={new NameValuePair("uid", "yunzhongzhile"),new NameValuePair("pwd", "9f0d63f7d63e39603eaa5d9637e5f157"),new NameValuePair("mobile",userMobile),new NameValuePair("content","验证码："+code+"用于云众知乐高考大数据网注册会员验证，五分钟内有效，请尽快完成操作。【云众知乐教育】")};
+		post.setRequestBody(data);
+	
+		client.executeMethod(post);
+		Header[] headers = post.getResponseHeaders();
+		int statusCode = post.getStatusCode();
+		System.out.println("statusCode:"+statusCode);
+		for(Header h : headers)
+		{
+		System.out.println(h.toString());
+		}
+		String result = new String(post.getResponseBodyAsString().getBytes("iso-8859-1"), "UTF-8");
+		/*System.out.println(result); //打印返回消息状态
+			*/	
+		post.releaseConnection();
+		
+		return result;
+
+	}
+	
+   public static void main(String[] parg){
+	   try {
+		System.out.println("sssssssssssss=="+SendMsgCodeUtil.SendMsgCode("13765156020", "9527"));
+	} catch (Exception e) {
+		// TODO Auto-generated catch block
+		e.printStackTrace();
+	}
+   } 
+}

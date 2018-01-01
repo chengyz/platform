@@ -1,0 +1,221 @@
+package com.sctgz.platform.action;
+
+import java.util.HashMap;
+import java.util.Map;
+
+import com.sctgz.platform.manage.RoleVipMng;
+import com.sctgz.util.CacheUtil;
+import com.sctgz.util.JsonUtil;
+
+import spark.Request;
+import spark.Response;
+import spark.Route;
+import spark.Spark;
+import spark.annotation.Auto;
+import spark.servlet.ISparkApplication;
+
+public class RoleVipAction implements ISparkApplication {
+
+	@Auto(name=RoleVipMng.class)
+	private RoleVipMng roleVipMng;
+	
+	@Override
+	public void run() {
+		Spark.post(new Route("/system/roleVip/saveRoleVip",true,"jdbcwrite"){
+
+			@Override
+			public Object handle(Request request, Response response)
+					throws Exception {
+				String token = request.raw().getSession().getAttribute("token").toString();
+				Map<String, String> resulrMap = new HashMap<String, String>();
+				if (token == null) {
+					resulrMap.put("status", "-12");
+					resulrMap.put("msg", "未获取令牌信息！");
+					return JsonUtil.ObjToJson(resulrMap);
+				}
+				Map<String,Object> map = (Map<String,Object>) CacheUtil.getInstance().getTokenObject(token);
+				if (map == null) {
+					// 令牌取不到数据，说明没有登陆，或操作过期。
+					resulrMap.put("status", "-10");
+					resulrMap.put("msg", "未获取令牌信息对象！");
+					return JsonUtil.ObjToJson(resulrMap);
+				}else{
+					return roleVipMng.saveRoleVip("jdbcwrite", false, request.raw(), response.raw());
+				}
+			}
+			
+		});
+		Spark.post(new Route("/system/roleVip/delRoleVip",true,"jdbcwrite"){
+
+			@Override
+			public Object handle(Request request, Response response)
+					throws Exception {
+				String token = request.raw().getSession().getAttribute("token").toString();
+				Map<String, String> resulrMap = new HashMap<String, String>();
+				if (token == null) {
+					resulrMap.put("status", "-12");
+					resulrMap.put("msg", "未获取令牌信息！");
+					return JsonUtil.ObjToJson(resulrMap);
+				}
+				Map<String,Object> map = (Map<String,Object>) CacheUtil.getInstance().getTokenObject(token);
+				if (map == null) {
+					// 令牌取不到数据，说明没有登陆，或操作过期。
+					resulrMap.put("status", "-10");
+					resulrMap.put("msg", "未获取令牌信息对象！");
+					return JsonUtil.ObjToJson(resulrMap);
+				}else{
+					return roleVipMng.delRoleVip("jdbcwrite", false, request.raw(), response.raw());
+				}
+			}
+			
+		});
+		Spark.post(new Route("/system/roleVip/findVipList",true,"jdbcread"){
+
+			@Override
+			public Object handle(Request request, Response response)
+					throws Exception {
+				String token = request.raw().getSession().getAttribute("token").toString();
+				Map<String, String> resulrMap = new HashMap<String, String>();
+				if (token == null) {
+					resulrMap.put("status", "-12");
+					resulrMap.put("msg", "未获取令牌信息！");
+					return JsonUtil.ObjToJson(resulrMap);
+				}
+				Map<String,Object> map = (Map<String,Object>) CacheUtil.getInstance().getTokenObject(token);
+				if (map == null) {
+					// 令牌取不到数据，说明没有登陆，或操作过期。
+					resulrMap.put("status", "-10");
+					resulrMap.put("msg", "未获取令牌信息对象！");
+					return JsonUtil.ObjToJson(resulrMap);
+				}else{
+					return roleVipMng.findVipList("jdbcread", false, request.raw(), response.raw());
+				}
+			}
+			
+		});
+		Spark.post(new Route("/system/roleVip/findNotVipList",true,"jdbcread"){
+
+			@Override
+			public Object handle(Request request, Response response)
+					throws Exception {
+				String token = request.raw().getSession().getAttribute("token").toString();
+				Map<String, String> resulrMap = new HashMap<String, String>();
+				if (token == null) {
+					resulrMap.put("status", "-12");
+					resulrMap.put("msg", "未获取令牌信息！");
+					return JsonUtil.ObjToJson(resulrMap);
+				}
+				Map<String,Object> map = (Map<String,Object>) CacheUtil.getInstance().getTokenObject(token);
+				if (map == null) {
+					// 令牌取不到数据，说明没有登陆，或操作过期。
+					resulrMap.put("status", "-10");
+					resulrMap.put("msg", "未获取令牌信息对象！");
+					return JsonUtil.ObjToJson(resulrMap);
+				}else{
+					return roleVipMng.findNotVipList("jdbcread", false, request.raw(), response.raw());
+				}
+			}
+			
+		});
+		Spark.post(new Route("/system/roleVip/findRoleList",true,"jdbcread"){
+
+			@Override
+			public Object handle(Request request, Response response)
+					throws Exception {
+				String token = request.raw().getSession().getAttribute("token").toString();
+				Map<String, String> resulrMap = new HashMap<String, String>();
+				if (token == null) {
+					resulrMap.put("status", "-12");
+					resulrMap.put("msg", "未获取令牌信息！");
+					return JsonUtil.ObjToJson(resulrMap);
+				}
+				Map<String,Object> map = (Map<String,Object>) CacheUtil.getInstance().getTokenObject(token);
+				if (map == null) {
+					// 令牌取不到数据，说明没有登陆，或操作过期。
+					resulrMap.put("status", "-10");
+					resulrMap.put("msg", "未获取令牌信息对象！");
+					return JsonUtil.ObjToJson(resulrMap);
+				}else{
+					return roleVipMng.findRoleList("jdbcread", false, request.raw(), response.raw());
+				}
+			}
+			
+		});
+		Spark.post(new Route("/system/roleVip/findNotRoleList",true,"jdbcread"){
+
+			@Override
+			public Object handle(Request request, Response response)
+					throws Exception {
+				String token = request.raw().getSession().getAttribute("token").toString();
+				Map<String, String> resulrMap = new HashMap<String, String>();
+				if (token == null) {
+					resulrMap.put("status", "-12");
+					resulrMap.put("msg", "未获取令牌信息！");
+					return JsonUtil.ObjToJson(resulrMap);
+				}
+				Map<String,Object> map = (Map<String,Object>) CacheUtil.getInstance().getTokenObject(token);
+				if (map == null) {
+					// 令牌取不到数据，说明没有登陆，或操作过期。
+					resulrMap.put("status", "-10");
+					resulrMap.put("msg", "未获取令牌信息对象！");
+					return JsonUtil.ObjToJson(resulrMap);
+				}else{
+					return roleVipMng.findNotRoleList("jdbcread", false, request.raw(), response.raw());
+				}
+			}
+			
+		});
+		Spark.post(new Route("/system/roleVip/findRoleToAssignRole",true,"jdbcread"){
+
+			@Override
+			public Object handle(Request request, Response response)
+					throws Exception {
+				String token = request.raw().getSession().getAttribute("token").toString();
+				Map<String, String> resulrMap = new HashMap<String, String>();
+				if (token == null) {
+					resulrMap.put("status", "-12");
+					resulrMap.put("msg", "未获取令牌信息！");
+					return JsonUtil.ObjToJson(resulrMap);
+				}
+				Map<String,Object> map = (Map<String,Object>) CacheUtil.getInstance().getTokenObject(token);
+				if (map == null) {
+					// 令牌取不到数据，说明没有登陆，或操作过期。
+					resulrMap.put("status", "-10");
+					resulrMap.put("msg", "未获取令牌信息对象！");
+					return JsonUtil.ObjToJson(resulrMap);
+				}else{
+					return roleVipMng.findRoleToAssignRole("jdbcread", false, request.raw(), response.raw());
+				}
+			}
+			
+		});
+		Spark.post(new Route("/system/roleVip/",true,""){
+
+			@Override
+			public Object handle(Request request, Response response)
+					throws Exception {
+				String token = request.raw().getSession().getAttribute("token").toString();
+				Map<String, String> resulrMap = new HashMap<String, String>();
+				if (token == null) {
+					resulrMap.put("status", "-12");
+					resulrMap.put("msg", "未获取令牌信息！");
+					return JsonUtil.ObjToJson(resulrMap);
+				}
+				Map<String,Object> map = (Map<String,Object>) CacheUtil.getInstance().getTokenObject(token);
+				if (map == null) {
+					// 令牌取不到数据，说明没有登陆，或操作过期。
+					resulrMap.put("status", "-10");
+					resulrMap.put("msg", "未获取令牌信息对象！");
+					return JsonUtil.ObjToJson(resulrMap);
+				}else{
+					
+				}
+				// TODO Auto-generated method stub
+				return null;
+			}
+			
+		});
+		
+	}
+
+}

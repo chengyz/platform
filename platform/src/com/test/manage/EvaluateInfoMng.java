@@ -1,0 +1,235 @@
+package com.test.manage;
+
+import java.text.DecimalFormat;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import spark.annotation.Auto;
+
+import com.platform.entity.VipInfo;
+import com.platform.service.IVipService;
+import com.platform.service.impl.VipServiceImpl;
+import com.test.entity.EvaluateInfo;
+import com.test.service.EvaluateInfoService;
+import com.test.service.OrderInfoService;
+import com.test.service.OrderPeopleService;
+import com.test.service.impl.EvaluateInfoServiceImpl;
+import com.test.service.impl.OrderInfoServiceImpl;
+import com.test.service.impl.OrderPeopleServiceImpl;
+import com.util.JsonUtil;
+import com.util.ReadProperties;
+import com.util.ReqToEntityUtil;
+import com.util.ReqToMapUtil;
+import com.util.UpdateDataUtil;
+import com.util.Uploader;
+
+import dbengine.util.Page;
+
+/**
+ * 好快当评价管理
+ * @author chengyz
+ *
+ */
+public class EvaluateInfoMng {
+	@Auto(name=EvaluateInfoServiceImpl.class)
+	private EvaluateInfoService evaluateInfoService;
+	@Auto(name=VipServiceImpl.class)
+	private IVipService vipService;
+	@Auto(name=OrderPeopleServiceImpl.class)
+	private OrderPeopleService orderPeopleService;
+	/**
+	 * 上传好快当评价的图片
+	 * @param sourceId
+	 * @param closeConn
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	public String uploadEvaluate(HttpServletRequest request,HttpServletResponse response) throws Exception{
+		String basePath = ReadProperties.getValue("imgUploadPath");//得到config配置文件的主路径
+		Uploader up = new Uploader(request);
+		up.setSavePath(basePath);
+		String[] fileType = {".gif" , ".png" , ".jpg" , ".jpeg" , ".bmp"};
+		up.setAllowFiles(fileType);
+		up.setMaxSize(10000); //单位KB
+		up.upload();
+		String url = up.getUrl();//文件访问路径
+		return url;
+	}
+	/**
+	 * 查询评价
+	 * @param sourceId
+	 * @param closeConn
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	public String findEvaluate(String sourceId,boolean closeConn,HttpServletRequest request,HttpServletResponse response){
+		String evaluateUUID = request.getParameter("evaluateUUID");
+		if(evaluateUUID != null && !"".equals(evaluateUUID)){
+			EvaluateInfo evaluate = evaluateInfoService.findEvaluate(sourceId, closeConn, evaluateUUID);
+			if(evaluate == null){
+				return "[]";
+			}else{
+				return JsonUtil.ObjToJson(evaluate);
+			}
+		}else{
+			return "[]";
+		}
+	}
+	/**
+	 * 查询评价列表(会员查询)
+	 * @param sourceId
+	 * @param closeConn
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	public String findEvaluateList(String sourceId,boolean closeConn,HttpServletRequest request,HttpServletResponse response){
+		Page page = (Page)ReqToEntityUtil.reqToEntity(request, Page.class);
+		Map<String,String> findMap = ReqToMapUtil.reqToMap(request, EvaluateInfo.class);
+		List<Map> list = evaluateInfoService.findEvaluateList(sourceId, closeConn, page, findMap);
+		if(list == null || list.size() < 1 ){
+			return "[]";
+		}
+		if(page == null){
+			return JsonUtil.ObjToJson(list);
+		}else{
+			return JsonUtil.ObjToJson(page);
+		}
+	}
+	/**
+	 * 查询评价列表（后台查询）
+	 * @param sourceId
+	 * @param closeConn
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	public String findEvaluateLists(String sourceId,boolean closeConn,HttpServletRequest request,HttpServletResponse response){
+		Page page = (Page)ReqToEntityUtil.reqToEntity(request, Page.class);
+		Map<String,String> findMap = ReqToMapUtil.reqToMap(request, EvaluateInfo.class);
+		String startTime = request.getParameter("startTime");
+		String endTime = request.getParameter("endTime");
+		if(startTime != null && !"".equals(startTime)){
+			startTime = startTime.replace("  ", " ");
+		}
+		if(endTime != null && !"".equals(endTime)){
+			endTime = endTime.replace("  ", " ");
+		}
+		findMap.put("startTime", startTime);
+		findMap.put("endTime", endTime);
+		List<EvaluateInfo> list = evaluateInfoService.findEvaluateLists(sourceId, closeConn, page, findMap);
+		if(list == null || list.size() < 1 ){
+			return "[]";
+		}
+		if(page == null){
+			return JsonUtil.ObjToJson(list);
+		}else{
+			return JsonUtil.ObjToJson(page);
+		}
+	}
+	/**
+	 * 删除评价
+	 * @param sourceId
+	 * @param closeConn
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	public String deleteEvaluate(String sourceId,boolean closeConn,HttpServletRequest request,HttpServletResponse response){
+		String evaluateUUID = request.getParameter("evaluateUUID");
+		Map<String,String> map = new HashMap<String,String>();
+		if(evaluateUUID != null && !"".equals(evaluateUUID)){
+			if(evaluateInfoService.deleteEvaluate(sourceId, closeConn, evaluateUUID)){
+				map.put("status", "2");
+				map.put("msg", "成功");
+				return JsonUtil.ObjToJson(map);
+			}else{
+				map.put("status", "1");
+				map.put("msg", "失败");
+				return JsonUtil.ObjToJson(map);
+			}
+		}else{
+			map.put("status", "-1");
+			map.put("msg", "未获取到信息");
+			return JsonUtil.ObjToJson(map);
+		}
+	}
+	/**
+	 * 保存或修改评价
+	 * @param sourceId
+	 * @param closeConn
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	public String saveOrUpEvaluate(String sourceId,boolean closeConn,HttpServletRequest request,HttpServletResponse response){
+		EvaluateInfo evaluate = (EvaluateInfo)ReqToEntityUtil.reqToEntity(request, EvaluateInfo.class);
+		Map<String,String> map = new HashMap<String,String>();
+		if(evaluate != null){
+				VipInfo getVip = vipService.findVipInfoByOrderUUID(sourceId, closeConn, evaluate.getOrderUUID());
+				String s = evaluate.getStarGrade();
+				double no1=Double.parseDouble(s);//获取当前评价的分数
+				double no2=Double.parseDouble(getVip.getVipCredit());
+				double num= (double)((no1+no2)/2);  
+				DecimalFormat df = new DecimalFormat("0.00");  
+				String s1 = df.format(num);
+				getVip.setVipCredit(s1);
+				vipService.saveOrUpVip(sourceId, closeConn, getVip);
+			if(evaluateInfoService.saveOrUpEvaluate(sourceId, closeConn, evaluate)){
+				Map paramMap = new HashMap();
+				paramMap.put("status", "7");//修改订单的状态
+				if(UpdateDataUtil.updateData(sourceId, "order_info", paramMap, "orderUUID", evaluate.getOrderUUID())) {
+					map.put("status", "2");
+					map.put("msg", "成功");
+					return JsonUtil.ObjToJson(map);
+				}
+				map.put("status", "-2");
+				map.put("msg", "失败");
+				return JsonUtil.ObjToJson(map);
+			}else{
+				map.put("status", "-2");
+				map.put("msg", "失败");
+				return JsonUtil.ObjToJson(map);
+			}
+		}else{
+			map.put("status", "-1");
+			map.put("msg", "未获取到信息");
+			return JsonUtil.ObjToJson(map);
+		}
+	}
+	/**
+	 * 查询跑客的信息
+	 * @param sourceId
+	 * @param closeConn
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	public String findGetVipInfo(String sourceId,boolean closeConn,HttpServletRequest request,HttpServletResponse response){
+		String orderUUID = request.getParameter("orderUUID");
+		Map<String,String> map = new HashMap<String,String>();
+		if(orderUUID != null && !"".equals(orderUUID)){
+			String getUUID = orderPeopleService.findGetUUID(sourceId, closeConn, orderUUID);
+			if(getUUID != null && !"".equals(getUUID)){
+				map.put("status", "2");
+				map.put("msg", "查询数据成功");
+				map.put("getUUID", getUUID);
+				return JsonUtil.ObjToJson(map);
+			}else{
+				map.put("status", "-2");
+				map.put("msg", "未查询到信息");
+				return JsonUtil.ObjToJson(map);
+			}
+		}else{
+			map.put("status", "-1");
+			map.put("msg", "未获取到信息");
+			return JsonUtil.ObjToJson(map);
+		}
+	}
+}

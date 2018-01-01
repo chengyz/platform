@@ -1,0 +1,220 @@
+package com.sctgz.platform.service.impl;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+import spark.annotation.Auto;
+
+import com.mysql.jdbc.StringUtils;
+import com.sctgz.platform.entity.UnitInfo;
+import com.sctgz.platform.service.IUnitInfoService;
+
+import dbengine.dao.EntityDao;
+import dbengine.dao.SqlDao;
+import dbengine.util.Page;
+/**
+ * 单位（企业）信息接口实现
+ * @author fengxuefeng
+ *
+ */
+public class UnitInfoServiceImpl implements IUnitInfoService {
+
+	@SuppressWarnings("rawtypes")
+	@Auto(name=EntityDao.class)
+	private EntityDao entityDao;
+	
+	@SuppressWarnings("rawtypes")
+	@Auto(name=SqlDao.class)
+	private SqlDao sqlDao;
+	
+	@Override
+	public boolean saveOrUpUnitInfo(String sourceId, boolean closeConn,
+			UnitInfo unitInfo) {
+		if (unitInfo==null){
+			return false;
+		}
+		if (unitInfo.getId()==null){
+			return entityDao.saveEntity(sourceId, unitInfo, closeConn);
+		}else{
+			return entityDao.updateEntity(sourceId, unitInfo, closeConn);
+		}
+	}
+
+	@SuppressWarnings("unchecked")
+	@Override
+	public boolean delUnitById(String sourceId, boolean closeConn, String id) {
+		if (StringUtils.isNullOrEmpty(id)){
+			return false;
+		}
+		StringBuilder sql = new StringBuilder();
+		List<String> params = new ArrayList<String>();
+		sql.append("delete from unit_info where id = ?");
+		params.add(id);
+		return sqlDao.executeSql(sourceId, sql.toString(), closeConn, params);
+	}
+
+	@SuppressWarnings("unchecked")
+	@Override
+	public boolean delUnitByUUID(String sourceId, boolean closeConn, String uuid) {
+		if (StringUtils.isNullOrEmpty(uuid)){
+			return false;
+		}
+		StringBuilder sql = new StringBuilder();
+		List<String> params = new ArrayList<String>();
+		sql.append("delete from unit_info where unitUUID = ?");
+		params.add(uuid);
+		return sqlDao.executeSql(sourceId, sql.toString(), closeConn, params);
+	}
+
+	@Override
+	public boolean chandeUnitStatusById(String sourceId, boolean closeConn,
+			String id, String status) {
+		if(StringUtils.isNullOrEmpty(id)||StringUtils.isNullOrEmpty(status)){
+			return false;
+		}
+		StringBuilder sql = new StringBuilder();
+		List<Object> params = new ArrayList<Object>();
+		sql.append("update unit_info set status = ? ");
+		params.add(status);
+		sql.append(" where id = ?");
+		params.add(id);
+		return sqlDao.executeSql(sourceId, sql.toString(), closeConn, params);
+	}
+
+	@Override
+	public boolean chandeUnitStatusByUUID(String sourceId, boolean closeConn,
+			String uuid, String status) {
+		if(StringUtils.isNullOrEmpty(uuid)||StringUtils.isNullOrEmpty(status)){
+			return false;
+		}
+		StringBuilder sql = new StringBuilder();
+		List<Object> params = new ArrayList<Object>();
+		sql.append("update unit_info set status = ? ");
+		params.add(status);
+		sql.append(" where unitUUID = ?");
+		params.add(uuid);
+		return sqlDao.executeSql(sourceId, sql.toString(), closeConn, params);
+	}
+	
+	@SuppressWarnings("unchecked")
+	@Override
+	public UnitInfo findUnitById(String sourceId, boolean closeConn, String id) {
+		if (StringUtils.isNullOrEmpty(id)){
+			return null;
+		}
+		StringBuilder sql = new StringBuilder();
+		List<String> params = new ArrayList<String>();
+		sql.append("select * from unit_info where id = ? ");
+		params.add(id);
+		return (UnitInfo) sqlDao.findEntityBySql(sourceId, sql.toString(), UnitInfo.class, closeConn, params);
+	}
+
+	@SuppressWarnings("unchecked")
+	@Override
+	public UnitInfo findUnitByUUID(String sourceId, boolean closeConn,
+			String uuid) {
+		if (StringUtils.isNullOrEmpty(uuid)){
+			return null;
+		}
+		StringBuilder sql = new StringBuilder();
+		List<String> params = new ArrayList<String>();
+		sql.append("select * from unit_info where unitUUID = ? ");
+		params.add(uuid);
+		return (UnitInfo) sqlDao.findEntityBySql(sourceId, sql.toString(), UnitInfo.class, closeConn, params);
+	}
+
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	@Override
+	public List<Map> findUnitListMap(String sourceId, boolean closeConn,
+			Page page, Map<String, String> findMap) {
+		StringBuilder sql = new StringBuilder();
+		List<String> params = new ArrayList<String>();
+		sql.append("select * from unit_info where 1 = 1 ");
+		if (findMap!=null){
+			if (findMap.get("unitUUID") != null && !"".equals(findMap.get("unitUUID")) && !"null".equals(findMap.get("unitUUID"))){
+				sql.append(" and unitUUID = ? ");
+				params.add(findMap.get("unitUUID"));
+			}
+			if (findMap.get("LegalRepresentative") != null && !"".equals(findMap.get("LegalRepresentative")) && !"null".equals(findMap.get("LegalRepresentative"))){
+				sql.append(" and LegalRepresentative = ? ");
+				params.add(findMap.get("LegalRepresentative"));
+			}
+			if (findMap.get("unitRegionCode") != null && !"".equals(findMap.get("unitRegionCode")) && !"null".equals(findMap.get("unitRegionCode"))){
+				sql.append(" and unitRegionCode = ? ");
+				params.add(findMap.get("unitRegionCode"));
+			}
+			if (findMap.get("unitNature") != null && !"".equals(findMap.get("unitNature")) && !"null".equals(findMap.get("unitNature"))){
+				sql.append(" and unitNature = ? ");
+				params.add(findMap.get("unitNature"));
+			}
+			if (findMap.get("unitTrades") != null && !"".equals(findMap.get("unitTrades")) && !"null".equals(findMap.get("unitTrades"))){
+				sql.append(" and unitTrades = ? ");
+				params.add(findMap.get("unitTrades"));
+			}
+			if (findMap.get("licenseType") != null && !"".equals(findMap.get("licenseType")) && !"null".equals(findMap.get("licenseType"))){
+				sql.append(" and licenseType = ? ");
+				params.add(findMap.get("licenseType"));
+			}
+			if (findMap.get("unitCode") != null && !"".equals(findMap.get("unitCode")) && !"null".equals(findMap.get("unitCode"))){
+				sql.append(" and unitCode like '%").append(findMap.get("unitCode").replace("'", "")).append("%'");
+			}
+			if (findMap.get("LicenseNo") != null && !"".equals(findMap.get("LicenseNo")) && !"null".equals(findMap.get("LicenseNo"))){
+				sql.append(" and LicenseNo like '%").append(findMap.get("LicenseNo").replace("'", "")).append("%'");
+			}
+			if (findMap.get("unitName") != null && !"".equals(findMap.get("unitName")) && !"null".equals(findMap.get("unitName"))){
+				sql.append(" and unitName like '%").append(findMap.get("unitName").replace("'", "")).append("%'");
+			}
+			if (findMap.get("unitRegionName") != null && !"".equals(findMap.get("unitRegionName")) && !"null".equals(findMap.get("unitRegionName"))){
+				sql.append(" and unitRegionName like '%").append(findMap.get("unitRegionName").replace("'", "")).append("%'");
+			}
+		}
+		sql.append("order by createTime asc");
+		List<Map> list = new ArrayList<Map>();
+		if (page==null){
+			list = sqlDao.findMapListBysql(sourceId, sql.toString(), closeConn, params);
+		}else{
+			list = sqlDao.findPageByMysql(sourceId, sql.toString(), closeConn, null, page, params);
+		}
+		return list;
+	}
+
+	@Override
+	public boolean checkUnitExitByUCode(String sourceId, boolean closeConn,
+			String unitCode) {
+		if (StringUtils.isNullOrEmpty(unitCode)){
+			return false;
+		}
+		StringBuilder sql = new StringBuilder();
+		List<String> params = new ArrayList<String>();
+		sql.append("select * from unit_info where unitCode = ? ");
+		params.add(unitCode);
+		@SuppressWarnings("unchecked")
+		UnitInfo unitInfo = (UnitInfo) sqlDao.findEntityBySql(sourceId, sql.toString(), UnitInfo.class, closeConn, params);
+		if (unitInfo==null){
+			return false;
+		}else{
+			unitInfo=null;
+			return true;
+		}
+	}
+
+	@Override
+	public List<Map<String, String>> findUnitNameToAutoComplete(String sourceId,
+			boolean closeConn, String unitName) {
+		List<Map<String, String>> list = null;
+		try {
+			StringBuilder sql = new StringBuilder();
+			sql.append("select unitUUID as hideValue, unitName as value, unitName as label from unit_info where 1 = 1 ");
+			if(unitName != null && !"".equals(unitName)) {
+				sql.append("and unitName like '%").append(unitName.replace("'", "")).append("%' ");
+			}
+			list = sqlDao.findMapListBysql(sourceId, sql.toString(), closeConn, null);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return list;
+	}
+
+
+}

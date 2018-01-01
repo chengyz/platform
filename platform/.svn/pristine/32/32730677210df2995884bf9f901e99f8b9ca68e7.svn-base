@@ -1,0 +1,79 @@
+package com.sctgz;
+
+import java.io.IOException;
+
+import javax.servlet.Filter;
+import javax.servlet.FilterChain;
+import javax.servlet.FilterConfig;
+import javax.servlet.ServletException;
+import javax.servlet.ServletRequest;
+import javax.servlet.ServletResponse;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import com.sctgz.platform.entity.UserInfo;
+
+/**
+ * 用户session过期判断
+ * @author hshzh
+ *
+ */
+public class SessionFilter implements Filter {
+
+	/* (non-Javadoc)
+	 * @see javax.servlet.Filter#destroy()
+	 */
+	public void destroy() {
+		// TODO Auto-generated method stub
+
+	}
+
+	/* (non-Javadoc)
+	 * @see javax.servlet.Filter#doFilter(javax.servlet.ServletRequest, javax.servlet.ServletResponse, javax.servlet.FilterChain)
+	 */
+	public void doFilter(ServletRequest request, ServletResponse response,
+			FilterChain chain) throws IOException, ServletException {
+		HttpServletRequest req = (HttpServletRequest)request;
+		@SuppressWarnings("unused")
+		HttpServletResponse resp = (HttpServletResponse)response; 
+		String url = req.getRequestURI();
+		String queryParam = req.getQueryString();
+		String token=req.getSession().getAttribute("token")==null?null:req.getSession().getAttribute("token").toString();  //获取令牌
+		if(queryParam == null) {
+			queryParam = "";
+		}
+		String path = req.getContextPath();
+		if (url.indexOf("/pc/") > 0 || url.indexOf("hkdapp/") > 0 || url.indexOf("system/") > 0 || url.indexOf("ppinfoapp/") > 0 || url.indexOf("/front/") > 0 || url.indexOf("/PlatformAdmin/") > 0 || url.indexOf("/bigFileUp/") > 0) {
+			//外部调用，不用session过滤,通过令牌token进行登陆验证，如有需要的话
+			chain.doFilter(request, response);
+		} else if(token == null ) {
+			if(!url.endsWith(path + "/") 
+					&& !url.endsWith("/system/user/findUserForLogin")
+					&& !url.endsWith("/system/vip/findVipByMap")
+					&& !url.endsWith("/system/vip/upVipPwdByPassCode")
+					&& !url.endsWith("/system/vip/VipLogin")
+					&& !url.endsWith("/system/vip/upVipPic")
+					&& !url.endsWith("/system/user/getVCode")
+					&& !url.endsWith("/HkdAppAdmin/login.jsp")
+					&& !url.endsWith("/system/vip/savaVip")
+					&& !url.endsWith("/loginBg.jpg")
+					) {
+				request.getRequestDispatcher("/logout.jsp").forward(request, response);//session超期
+				return;
+			} else {
+				chain.doFilter(request, response);
+			}
+		} else{
+				chain.doFilter(request, response);
+		}		
+	}
+
+	/* (non-Javadoc)
+	 * @see javax.servlet.Filter#init(javax.servlet.FilterConfig)
+	 */
+	public void init(FilterConfig arg0) throws ServletException {
+		// TODO Auto-generated method stub
+
+	}
+
+}

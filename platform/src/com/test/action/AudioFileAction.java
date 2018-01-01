@@ -1,0 +1,38 @@
+package com.test.action;
+
+import spark.Request;
+import spark.Response;
+import spark.Route;
+import spark.Spark;
+import spark.servlet.ISparkApplication;
+
+import com.util.ReadProperties;
+import com.util.Uploader;
+/**
+ * 帮我取、帮我买、帮我送 的订单的音频上传接口
+ * @author chengyz
+ *
+ */
+public class AudioFileAction implements ISparkApplication {
+
+	/**
+	 * 音频文件的上传
+	 */
+	@Override
+	public void run() {
+		Spark.post(new Route("/hkdapp/order/audioFile",true,"jdbcwrite") {		
+			@Override
+			public Object handle(Request request, Response response) throws Exception {
+				String basePath = ReadProperties.getValue("audioUploadPath");//得到config配置文件的主路径
+				Uploader up = new Uploader(request.raw());
+				up.setSavePath(basePath);
+				String[] fileType = {".amr" , ".3gp" , ".wav" , ".aac" , ".amr"};
+				up.setAllowFiles(fileType);
+				up.setMaxSize(10000); //单位KB
+				up.upload();
+				String url = up.getUrl();//文件访问路径
+				return url;
+			}
+		});
+	}
+}

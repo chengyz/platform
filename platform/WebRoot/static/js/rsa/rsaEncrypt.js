@@ -1,0 +1,25 @@
+function getKey(modulus) {
+    setMaxDigits(130);
+    // 指数和模数可以根据需求，从后台获取，或者写在前端代码中
+    key = new RSAKeyPair(
+        "10001", 
+        "10001",
+        modulus);
+    return key;
+}
+//加载加密模
+function loadModulus() {
+	$.post('http://localhost:8081/AppPlatform/system/user/modulus', function(data) {
+		if (data != null) {
+			$("#modulus").val(data);
+		}
+	});
+}
+//rsa加密
+function rsaEncrypt(modulus,parameter) {
+    if(parameter == null || parameter == "") {
+    	return ;
+    }
+    var result = encryptedString(getKey(modulus), parameter);
+    return result;
+}

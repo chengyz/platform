@@ -1,0 +1,282 @@
+package com.sctgz.HkdApp.manage;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import javassist.bytecode.Descriptor.Iterator;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import javolution.util.FastMap;
+import spark.annotation.Auto;
+
+import com.sctgz.HkdApp.entity.OrderInfo;
+import com.sctgz.HkdApp.service.ILocationService;
+import com.sctgz.HkdApp.service.impl.LocationServiceImpl;
+import com.sctgz.util.CacheUtil;
+import com.sctgz.util.JsonUtil;
+import com.sctgz.util.ReqToEntityUtil;
+
+import dbengine.util.Page;
+
+/**
+ * 
+ * 会员定位相关管理
+ * 
+ * @author hshzh
+ * @date 2017-3-13 下午3:04:49
+ */
+public class LocationMng {
+	@Auto(name = LocationServiceImpl.class)
+	private ILocationService locationService;
+
+	/**
+	 * 查未接单的订单
+	 * 
+	 * @param sourceId
+	 * @param closeConn
+	 * @param page
+	 * @return
+	 */
+	public String findUntreatedOrders(String sourceId, boolean closeConn, HttpServletRequest request, HttpServletResponse response) {
+		Page page = (Page) ReqToEntityUtil.reqToEntity(request, Page.class);
+		List<Map> orderList = locationService.findUntreatedOrders(sourceId, closeConn, page);
+		if (orderList == null) {
+			return "[]";
+		}
+		if (page == null) {
+			return JsonUtil.ObjToJson(orderList);
+		} else {
+			return JsonUtil.ObjToJson(page);
+		}
+	}
+	
+	/**
+	 * 设置未接单的订单缓存列表
+	 */
+	private List<Map> setUntreatedOrdersCache(String sourceId, boolean closeConn) {
+		// 查出数据
+		List<Map> orderList = locationService.findUntreatedOrders(sourceId, closeConn, null);
+		CacheUtil.getInstance().getBaseCache().put("ordersCache", orderList);
+		return orderList;
+	}
+    /**
+     * 添加未接单的订单缓存
+     * @param sourceId
+     * @param closeConn
+     * @return
+     */
+    public boolean addUntreatedOrderCache(String sourceId, boolean closeConn,OrderInfo orderInfo){
+    	Map orderMap = new HashMap();
+    	if(orderInfo != null){//转换为符合要求的map
+    		orderMap.put("orderUUID", orderInfo.getOrderUUID());
+    		orderMap.put("orderType", orderInfo.getOrderType());
+    		orderMap.put("payTime", orderInfo.getPayTime());
+    		orderMap.put("vipUUID", orderInfo.getVipUUID());
+    		orderMap.put("vipPhoneNumber", orderInfo.getVipPhoneNumber());
+    		orderMap.put("orderPrice", orderInfo.getOrderPrice());
+    		orderMap.put("sendLo", orderInfo.getBeginLongitude());
+    		orderMap.put("sendLa", orderInfo.getBeginLatitude());
+    		orderMap.put("recLo", orderInfo.getSendLongitude());
+    		orderMap.put("recLa", orderInfo.getSendLatitude());
+    		if("1".equals(orderInfo.getOrderType())) {
+    			orderMap.put("buyOption", orderInfo.getBuyOption());
+    		} else {
+    			orderMap.put("itemType", orderInfo.getItemType());
+    		}
+    		orderMap.put("createTime", orderInfo.getCreateTime());
+    		orderMap.put("beginAddress", orderInfo.getBeginAddress());
+    		orderMap.put("sendAddress", orderInfo.getSendAddress());
+    		orderMap.put("recLa", orderInfo.getSendLatitude());
+    		
+    	}else{
+    		return false;
+    	}
+        List<Map>  orderList = (List<Map>)CacheUtil.getInstance().getBaseCache().get("ordersCache");
+        if(orderList==null){
+        	orderList = new ArrayList<Map>();
+        }
+        orderList.add(orderMap);
+        
+        CacheUtil.getInstance().getBaseCache().put("ordersCache", orderList);
+    	return true;
+    }
+    /**
+     * 移除未接单的订单缓存
+     * @param sourceId
+     * @param closeConn
+     * @return
+     */
+    public boolean delUntreatedOrderCache(String sourceId, boolean closeConn,String orderUUID){
+    	if(orderUUID==null || "".equals(orderUUID)){
+    		return false;
+    	}
+    	List<Map>  orderList = (List<Map>)CacheUtil.getInstance().getBaseCache().get("ordersCache");
+    	if(orderList==null){
+    		return false;
+    	}
+    	for(Map map : orderList){
+    		if(orderUUID.equals(map.get("orderUUID"))){
+    			orderList.remove(map);
+    			CacheUtil.getInstance().getBaseCache().put("ordersCache", orderList);
+    			return true;
+    		}
+    	}
+    	return false;
+    }
+	/**
+	 * 查询指定直线距离内的订单（距收货地址和发货地址的距离，单位米）
+	 * 
+	 * @param sourceId
+	 * @param closeConn
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	public String findOrders(String sourceId, boolean closeConn, HttpServletRequest request, HttpServletResponse response) {
+		String distance = request.getParameter("distance");// 距离，单位米
+		String strLo =  request.getParameter("strLo");//会员当前经度坐标
+		String strLa =  request.getParameter("strLa");//会员当前经度坐标
+		String vipUUID = request.getParameter("vipUUID");//会员uuid
+		//坐标精度转化
+		double Lo = 0.0;
+		double La = 0.0;
+		try{
+			Lo = Double.valueOf(strLo);
+			La = Double.valueOf(strLa);
+		}catch(Exception ex){
+			return "[]";
+		}
+		if (distance == null || "".equals(distance) || strLo == null || strLa==null) {
+			return "[]";
+		}
+		// 从缓存中提取数据
+		List<Map> mapList = (List<Map>) CacheUtil.getInstance().getBaseCache().get("ordersCache");
+		if (mapList == null) {
+			// 无缓存数据，从数据库中查询
+			mapList = setUntreatedOrdersCache(sourceId, closeConn);
+		}
+		if (mapList == null) {
+			return "[]";
+		}
+		// 定义发、收坐标点
+		double sendLo = 0.0;
+		double sendLa = 0.0;
+		double recLo = 0.0;
+		double recLa = 0.0;
+		float coord = Float.valueOf(distance);
+		List<Map> rmapList = new ArrayList<Map>();
+		for (Map map : mapList) {
+			try {
+				//会员自己派的单不给其在抢单地图上显示
+				if(!vipUUID.equals((String)map.get("vipUUID"))) {
+					sendLo = Double.valueOf(map.get("sendLo") + "");
+					sendLa = Double.valueOf(map.get("sendLa") + "");
+					recLo = Double.valueOf(map.get("recLo") + "");
+					recLa = Double.valueOf(map.get("recLa") + "");
+					// 计算直线坐标距离
+					if ((CoordDistance(Lo, La, recLo, recLa) < coord) || (CoordDistance(Lo, La, sendLo, sendLa) < coord)) {
+						// 在指定的范围内
+						rmapList.add(map);
+					}
+				}
+			} catch (Exception ex) {
+				continue;
+			}
+		}
+		
+		//返回最终筛选后的列表
+		return JsonUtil.ObjToJson(rmapList);
+	}
+
+	/**
+	 * 计算地球上任意坐标两点(经纬度)距离
+	 * 
+	 * @param long1    第一点经度
+	 * @param lat1   第一点纬度
+	 * @param long2  第二点经度
+	 * @param lat2    第二点纬度
+	 * @return 返回距离 单位：米
+	 */
+	private double CoordDistance(double long1, double lat1, double long2, double lat2) {
+		double a, b, R;
+		R = 6378137; // 地球半径
+		lat1 = lat1 * Math.PI / 180.0;
+		lat2 = lat2 * Math.PI / 180.0;
+		a = lat1 - lat2;
+		b = (long1 - long2) * Math.PI / 180.0;
+		double d;
+		double sa2, sb2;
+		sa2 = Math.sin(a / 2.0);
+		sb2 = Math.sin(b / 2.0);
+		d = 2 * R * Math.asin(Math.sqrt(sa2 * sa2 + Math.cos(lat1) * Math.cos(lat2) * sb2 * sb2));
+		return d;
+	}
+
+	/**
+	 * 缓存设置会员当前坐标点
+	 * @param sourceId
+	 * @param closeConn
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	public String setVipCoord(String sourceId, boolean closeConn, HttpServletRequest request, HttpServletResponse response){
+		String vipuuid = request.getParameter("vipUUID");// 会员uuid
+		String vipLo =  request.getParameter("vipLo");//会员经度
+		String vipLa =  request.getParameter("vipLa");//会员纬度
+		Map<String, String> rmap =  new HashMap<String, String>();
+		if(vipuuid == null || "".equals(vipuuid) || vipLo == null || "".equals(vipLo) || vipLa == null || "".equals(vipLa)){
+			rmap.put("status", "-1");
+			rmap.put("msg", "参数错误");
+			return JsonUtil.ObjToJson(rmap);
+		}
+		//读取缓存
+		Map vipCoordMap = (Map)CacheUtil.getInstance().getBaseCache().get("vipCoordMap");
+		if(vipCoordMap==null){			
+			vipCoordMap = new FastMap<String, Object>().shared();
+			CacheUtil.getInstance().getBaseCache().put("vipCoordMap", vipCoordMap);
+		}
+		//组装会员信息
+		Map map =new HashMap();
+		map.put("vipuuid", vipuuid);
+		map.put("vipLo", vipLo);
+		map.put("vipLa", vipLa);
+		
+		vipCoordMap.put("vipuuid", map);		
+		rmap.put("status", "1");
+		rmap.put("msg", "成功");
+		return JsonUtil.ObjToJson(rmap);		
+	}
+	
+	/**
+	 * 获取会员坐标
+	 * @param sourceId
+	 * @param closeConn
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	public String getVipCoord(String sourceId, boolean closeConn, HttpServletRequest request, HttpServletResponse response){
+		String vipuuid = request.getParameter("vipuuid");// 会员uuid
+		if(vipuuid==null || "".equals(vipuuid)){
+			return "[]";
+		}
+		//读取缓存
+		Map vipCoordMap = (Map)CacheUtil.getInstance().getBaseCache().get("vipCoordMap");
+		if(vipCoordMap==null){			
+			vipCoordMap = new FastMap<String, Object>().shared();
+			CacheUtil.getInstance().getBaseCache().put("vipCoordMap", vipCoordMap);
+			return "[]";
+		}
+		Map vipMap = (Map)vipCoordMap.get("vipuuid");
+		if(vipMap==null){
+			return "[]";
+		}else{
+			return JsonUtil.ObjToJson(vipMap);
+		}
+	}
+}

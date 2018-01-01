@@ -1,0 +1,196 @@
+package com.platform.manage;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import spark.annotation.Auto;
+
+import com.mysql.jdbc.StringUtils;
+import com.platform.entity.MenuInfo;
+import com.platform.service.IMenuInfoService;
+import com.platform.service.IMenuRoleService;
+import com.platform.service.IMenuUserService;
+import com.platform.service.IMenuVipService;
+import com.platform.service.impl.MenuInfoServiceImpl;
+import com.platform.service.impl.MenuRoleServiceImpl;
+import com.platform.service.impl.MenuUserServiceImpl;
+import com.platform.service.impl.MenuVipServiceImpl;
+import com.util.JsonUtil;
+import com.util.ReqToEntityUtil;
+import com.util.ReqToMapUtil;
+
+import dbengine.util.Page;
+
+public class MenuInfoMng {
+
+	@Auto(name=MenuInfoServiceImpl.class)
+	private IMenuInfoService menuService;
+	
+	@Auto(name=MenuRoleServiceImpl.class)
+	private IMenuRoleService roleMenuService;
+	
+	@Auto(name=MenuUserServiceImpl.class)
+	private IMenuUserService userMenuService;
+	
+	@Auto(name=MenuVipServiceImpl.class)
+	private IMenuVipService vipMenuService;
+	
+	public String saveMenu(String sourceId, boolean closeConn, HttpServletRequest request, HttpServletResponse response){
+		MenuInfo menu = (MenuInfo) ReqToEntityUtil.reqToEntity(request, MenuInfo.class);
+		Map<String, String> map = new HashMap<String, String>();
+		if (menu==null){
+			map.put("status", "2");
+			map.put("msg", "未输入菜单信息");
+			return JsonUtil.ObjToJson(map);
+		}
+		if (menu.getId()==null){
+			menu.setMenuUUID(UUID.randomUUID().toString());
+			menu.setMenuCode(menuService.getMenuCodeNext(sourceId, closeConn, menu.getMenuParentCode()));
+			menu.setUnitUUID("");
+		}
+		if (menuService.saveOrUpMenu(sourceId, closeConn, menu)){
+			map.put("status", "1");
+			map.put("msg", "菜单信息保存成功");
+			return JsonUtil.ObjToJson(map);
+		}else{
+			map.put("status", "0");
+			map.put("msg", "菜单信息保存失败");
+			return JsonUtil.ObjToJson(map);
+		}
+		
+	}
+	
+	public String delMenu(String sourceId, boolean closeConn, HttpServletRequest request, HttpServletResponse response){
+		String uuid = request.getParameter("menuUUID");
+		Map<String, String> map = new HashMap<String, String>();
+		if (!StringUtils.isNullOrEmpty(uuid)){
+			if (menuService.deleteMenu(sourceId, closeConn, uuid)){
+				map.put("status", "1");
+				map.put("msg", "成功");
+				return JsonUtil.ObjToJson(map);
+			}else{
+				map.put("status", "0");
+				map.put("msg", "失败");
+				return JsonUtil.ObjToJson(map);
+			}
+		}else{
+			map.put("status", "0");
+			map.put("msg", "未获取到菜单UUID");
+			return JsonUtil.ObjToJson(map);
+		}
+		
+	}
+	
+	public String findMenu(String sourceId, boolean closeConn, HttpServletRequest request, HttpServletResponse response){
+		String menuUUID = request.getParameter("menuUUID");
+		if (!StringUtils.isNullOrEmpty(menuUUID)){
+			MenuInfo menu = menuService.findMenu(sourceId, closeConn, menuUUID);
+			if (menu!=null){
+				return JsonUtil.ObjToJson(menu);
+			}else{
+				return JsonUtil.ObjToJson("[]");
+			}
+		}else{
+			return JsonUtil.ObjToJson("[]");
+		}
+		
+	}
+	
+	public String findMenuList(String sourceId, boolean closeConn, HttpServletRequest request, HttpServletResponse response){
+		Page page = (Page)ReqToEntityUtil.reqToEntity(request, Page.class);
+		Map<String,String> findMap =  ReqToMapUtil.reqToMap(request,MenuInfo.class);
+		List<MenuInfo> list = menuService.findMenuList(sourceId, closeConn, page, findMap);
+		if (page!=null){
+			return JsonUtil.ObjToJson(page);
+		}else if (list!=null){
+			return JsonUtil.ObjToJson(list);
+		}{
+			return JsonUtil.ObjToJson("[]");
+		}
+		
+	}
+	
+	public String findMenuUser(String sourceId, boolean closeConn, HttpServletRequest request, HttpServletResponse response){
+		String roleUUID = request.getParameter("roleUUID");
+		String userUUID = request.getParameter("userUUID");
+		String vipUUID = request.getParameter("vipUUID");
+		if (!StringUtils.isNullOrEmpty(roleUUID)){
+			List<MenuInfo> list = roleMenuService.findMenuByRoleUUID(sourceId, closeConn, roleUUID);
+			if (list.size()>0){
+				return JsonUtil.ObjToJson(list);
+			}else{
+				return JsonUtil.ObjToJson("[]");
+			}
+			
+		}else if (!StringUtils.isNullOrEmpty(userUUID)){
+			List<MenuInfo> list = roleMenuService.findMenuByRoleUUID(sourceId, closeConn, userUUID);
+			if (list.size()>0){
+				return JsonUtil.ObjToJson(list);
+			}else{
+				return JsonUtil.ObjToJson("[]");
+			}
+		}else if (!StringUtils.isNullOrEmpty(vipUUID)){
+			List<MenuInfo> list = roleMenuService.findMenuByRoleUUID(sourceId, closeConn, vipUUID);
+			if (list.size()>0){
+				return JsonUtil.ObjToJson(list);
+			}else{
+				return JsonUtil.ObjToJson("[]");
+			}
+		}else{
+			return JsonUtil.ObjToJson("[]");
+		}
+	}
+	
+	public String findMenuTree(String sourceId, boolean closeConn, HttpServletRequest request, HttpServletResponse response){
+		Map<String,String> findMap = new HashMap<String, String>();
+		findMap.put("menuName",request.getParameter("userQuery"));
+		findMap.put("menuUrl",request.getParameter("userQuery"));
+		List<MenuInfo> menuList = (List<MenuInfo>)menuService.findMenuList(sourceId, closeConn, null, findMap);
+		if(menuList==null){
+			return "[]";
+		}else{
+			List<Map<String, Object>> mapList = new ArrayList<Map<String, Object>>();
+			for(MenuInfo menu :menuList){
+				Map<String,Object> attributes = new HashMap<String,Object>();
+				attributes.put("id", menu.getMenuCode());
+				attributes.put("name", menu.getMenuName());
+				attributes.put("pId", menu.getMenuParentCode());
+				attributes.put("open", "true");// 默认打开树
+				attributes.put("nocheck", true);//是否没有选择框
+				attributes.put("checked", false);//是否选中
+				attributes.put("menuUUID", menu.getMenuUUID());//菜单UUID
+				attributes.put("menuCode", menu.getMenuCode());//
+				attributes.put("menuName", menu.getMenuName());//
+				attributes.put("menuParentCode", menu.getMenuParentCode());//
+				attributes.put("menuPermission", menu.getMenuPermission());//菜单权限名称
+				attributes.put("menuUrl", menu.getMenuUrl());//菜单地址
+				attributes.put("menuType", menu.getMenuType());//菜单类型
+				attributes.put("menuHaveLowerNode", menu.getMenuHaveLowerNode());//是否有下级节点
+				attributes.put("ecUUID", null);//ecUUID
+				mapList.add(attributes);
+			}
+			return JsonUtil.ObjToJson(mapList);
+		}
+	}
+	
+	public String findNotMenuByRoleUUID(String sourceId, boolean closeConn, HttpServletRequest request, HttpServletResponse response){
+		String roleUUID = request.getParameter("roleUUID");
+		if (!StringUtils.isNullOrEmpty(roleUUID)){
+			List<MenuInfo> list = roleMenuService.findNotMenuByRoleUUID(sourceId, closeConn, roleUUID);
+			if (list!=null){
+				return JsonUtil.ObjToJson(list);
+			}else{
+				return JsonUtil.ObjToJson("[]");
+			}
+		}else{
+			return JsonUtil.ObjToJson("[]");
+		}
+		
+	}
+}

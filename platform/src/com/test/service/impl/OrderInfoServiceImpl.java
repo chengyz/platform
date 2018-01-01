@@ -1,0 +1,254 @@
+package com.test.service.impl;
+
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+
+import spark.annotation.Auto;
+
+import com.test.entity.OrderInfo;
+import com.test.service.OrderInfoService;
+import com.util.DateUtil;
+
+import dbengine.dao.EntityDao;
+import dbengine.dao.SqlDao;
+import dbengine.util.Page;
+/**
+ * 帮我买/帮我取/帮我送  订单的service实现接口
+ * @author chengyz
+ *
+ */
+public class OrderInfoServiceImpl implements OrderInfoService {
+	@Auto(name=SqlDao.class)
+	private SqlDao sqldao;
+	
+	@Auto(name=EntityDao.class)
+	private EntityDao entityDao;
+	/**
+	 *  查询单个订单
+	 */
+	@Override
+	public OrderInfo findOrder(String sourceId, boolean closeConn, String orderUUID) {
+		if(orderUUID == null && "".equals(orderUUID)){
+			return null;
+		}
+		StringBuilder sql = new StringBuilder();
+		sql.append("select * from order_info where orderUUID = '").append(orderUUID.replace("'", "")).append("'");
+		return (OrderInfo)sqldao.findEntityBySql(sourceId, sql.toString(), OrderInfo.class, closeConn, null);
+	}
+	/**
+	 * 删除订单
+	 */
+	@Override
+	public boolean deleteOrder(String sourceId, boolean closeConn, String orderUUID) {
+		if(orderUUID == null && "".equals(orderUUID)){
+			return false;
+		}
+		StringBuilder sql = new StringBuilder();
+		sql.append("delete from order_info where orderUUID = '").append(orderUUID.replace("'", "")).append("'");
+		return sqldao.executeSql(sourceId, sql.toString(), closeConn, null);
+	}
+	/**
+	 * 查询订单列表
+	 */
+	@Override
+	public List<OrderInfo> findOrderList(String sourceId, boolean closeConn, Page page,Map<String, String> findMap) {
+		StringBuilder sql = new StringBuilder();
+		List<String> params = new ArrayList<String>();
+		sql.append("select * from order_info where 1 = 1 ");
+		if(findMap != null){
+			if(findMap.get("beginAddress") != null && !"".equals(findMap.get("beginAddress"))){
+				sql.append("and beginAddress like '%").append(findMap.get("beginAddress").replace("'", "")).append("%'");
+			}
+			if(findMap.get("sendAddress") != null && !"".equals(findMap.get("sendAddress"))){
+				sql.append("and sendAddress like '%").append(findMap.get("sendAddress").replace("'", "")).append("%'");
+			}
+			if(findMap.get("vipPhoneNumber") != null && !"".equals(findMap.get("vipPhoneNumber"))){
+				sql.append("and vipPhoneNumber = ? ");
+				params.add(findMap.get("vipPhoneNumber"));
+			}
+			if(findMap.get("startTime") != null && !"".equals(findMap.get("startTime"))){
+				sql.append("and createTime  >= ? ");
+				params.add(findMap.get("startTime"));
+			}
+			if(findMap.get("endTime") != null && !"".equals(findMap.get("endTime"))){
+				sql.append("and createTime <= ? ");
+				params.add(findMap.get("endTime"));
+			}
+			if(findMap.get("orderNumber") != null && !"".equals(findMap.get("orderNumber"))){
+				sql.append("and orderNumber = ? ");
+				params.add(findMap.get("orderNumber"));
+			}
+			if(findMap.get("status") != null && !"".equals(findMap.get("status"))){
+				if("6".equals(findMap.get("status"))) {
+					sql.append("and (status = '6' or status = '7') ");//查询已完成和已评价的订单
+				} else {
+					sql.append("and status = ? ");
+					params.add(findMap.get("status"));
+				}
+			}
+			if(findMap.get("orderType") != null && !"".equals(findMap.get("orderType"))){
+				sql.append("and orderType = ? ");
+				params.add(findMap.get("orderType"));
+			}
+			if(findMap.get("vipUUID") != null && !"".equals(findMap.get("vipUUID"))){
+				sql.append("and vipUUID = ? ");
+				params.add(findMap.get("vipUUID"));
+			}
+			sql.append(" order by createTime desc ");
+		}
+		if(page == null){
+			return sqldao.findListBySql(sourceId, sql.toString(), OrderInfo.class, closeConn, params);
+		}else{
+			return sqldao.findPageByMysql(sourceId, sql.toString(), closeConn, OrderInfo.class, page, params);
+		}
+	}
+	/**
+	 * 保存或修改订单
+	 */
+	@Override
+	public boolean saveOrUpOrder(String sourceId, boolean closeConn, OrderInfo orderInfo) {
+		if(orderInfo == null){
+			return false;
+		}
+		if(orderInfo.getId() == null){
+			return entityDao.saveEntity(sourceId, orderInfo, closeConn);
+		}else{
+			orderInfo.setUpdateTime(DateUtil.formatDate(new Date(),"yyyy-MM-dd HH:mm:ss"));
+			return entityDao.updateEntity(sourceId, orderInfo, closeConn);
+		}
+	}
+	
+	/**
+	 * 修改订单状态
+	 */
+	@Override
+	public boolean updateOrderStatus(String sourceId, boolean closeConn,String status, String orderUUID) {
+		if(orderUUID == null || "".equals(orderUUID) || status == null || "".equals(status)){
+			return false;
+		}
+		StringBuilder sql = new StringBuilder();
+		sql.append("select * from order_info where orderUUID = '").append(orderUUID.replace("'", "")).append("'");
+		OrderInfo order = (OrderInfo)sqldao.findEntityBySql(sourceId, sql.toString(), OrderInfo.class, closeConn, null);
+		if(order == null){
+			return false;
+		}
+		order.setStatus(status);
+		order.setUpdateTime(DateUtil.formatDate(new Date(),"yyyy-MM-dd HH:mm:ss"));
+		return entityDao.updateEntity(sourceId, order, closeConn);
+	}
+	/**
+	 * 通过交易时创建的订单号查询
+	 */
+	@Override
+	public OrderInfo findByOutOrderNo(String sourceId, boolean closeConn, String outsideOrderNo) {
+		if("".equals(outsideOrderNo) || outsideOrderNo == null ){
+			return null;
+		}
+		StringBuilder sql = new StringBuilder();
+		sql.append("select * from order_info where outsideOrderNo = '").append(outsideOrderNo).append("'");
+		OrderInfo order  = (OrderInfo)sqldao.findEntityBySql(sourceId, sql.toString(), OrderInfo.class, closeConn, null);
+		if(order == null){
+			return null;
+		}
+		return order;
+	}
+	/**
+	 * 查询我的接单列表
+	 */
+	@Override
+	public List<OrderInfo> findGetOrderList(String sourceId, boolean closeConn, Page page, Map<String, String> findMap) {
+		StringBuilder sql = new StringBuilder();
+		List<String> params = new ArrayList<String>();
+		sql.append("select * from order_info b join order_people o on b.orderUUID = o.orderUUID where 1 = 1 ");
+		if(findMap != null){
+			if(findMap.get("vipPhoneNumber") != null && !"".equals(findMap.get("vipPhoneNumber"))){
+				sql.append("and vipPhoneNumber = ? ");
+				params.add(findMap.get("vipPhoneNumber"));
+			}
+			if(findMap.get("startTime") != null && !"".equals(findMap.get("startTime"))){
+				sql.append("and createTime  >= ? ");
+				params.add(findMap.get("startTime"));
+			}
+			if(findMap.get("endTime") != null && !"".equals(findMap.get("endTime"))){
+				sql.append("and createTime <= ? ");
+				params.add(findMap.get("endTime"));
+			}
+			if(findMap.get("orderNumber") != null && !"".equals(findMap.get("orderNumber"))){
+				sql.append("and orderNumber = ? ");
+				params.add(findMap.get("orderNumber"));
+			}
+			if(findMap.get("status") != null && !"".equals(findMap.get("status"))){
+				if("6".equals(findMap.get("status"))) {
+					sql.append("and (status = '6' or status = '7') ");//查询已完成和已评价的订单
+				} else {
+					sql.append("and status = ? ");
+					params.add(findMap.get("status"));
+				}
+			}
+			if(findMap.get("vipUUID") != null && !"".equals(findMap.get("vipUUID"))){
+				sql.append("and o.getUUID = ? ");
+				params.add(findMap.get("vipUUID"));
+			}
+		}
+		sql.append(" order by createTime desc ");
+		if(page == null){
+			return sqldao.findListBySql(sourceId, sql.toString(), OrderInfo.class, closeConn, params);
+		}else{
+			return sqldao.findPageByMysql(sourceId, sql.toString(), closeConn, OrderInfo.class, page, params);
+		}
+	}
+	/**
+	 * 轮巡查询自动结算的订单列表
+	 */
+	@Override
+	public List<OrderInfo> findOrdersList(String sourceId, boolean closeConn) {
+		StringBuilder sql = new StringBuilder();
+		sql.append("select * from order_info where status in ('4','5')");
+		List<OrderInfo> list = sqldao.findListBySql(sourceId, sql.toString(), OrderInfo.class, closeConn, null);
+		if(list == null || list.size() < 1){
+			return null;
+		}
+		return list;
+	}
+	/**
+	 * 轮巡查询未支付的订单列表
+	 */
+	@Override
+	public List<OrderInfo> findOrdersLists(String sourceId, boolean closeConn) {
+		StringBuilder sql = new StringBuilder();
+		sql.append("select * from order_info where status = '1' ");
+		List<OrderInfo> list = sqldao.findListBySql(sourceId, sql.toString(), OrderInfo.class, closeConn, null);
+		if(list == null || list.size() < 1){
+			return null;
+		}
+		return list;
+	}
+	/**
+	 * 轮巡查询未被抢的订单列表
+	 */
+	@Override
+	public List<OrderInfo> findOrderNoGetLists(String sourceId, boolean closeConn) {
+		StringBuilder sql = new StringBuilder();
+		sql.append("select * from order_info where status = '3' ");
+		List<OrderInfo> list = sqldao.findListBySql(sourceId, sql.toString(), OrderInfo.class, closeConn, null);
+		if(list == null || list.size() < 1){
+			return null;
+		}
+		return list;
+	}
+	/**
+	 * 查询收货确认码
+	 */
+	@Override
+	public String findOrderPasscode(String sourceId, boolean closeConn, String vipUUID, String orderUUID) {
+		String sql = "select orderPasscode as orderPasscode from order_info where vipUUID = '"+vipUUID+"' and orderUUID = '"+orderUUID+"'";
+		Map map = sqldao.findMapBysql(sourceId, sql, closeConn, null);
+		if(map == null) {
+			return "";
+		}
+		return (String)map.get("orderPasscode");
+	}
+	
+}

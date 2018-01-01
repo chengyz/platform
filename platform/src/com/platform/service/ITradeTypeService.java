@@ -1,0 +1,87 @@
+package com.platform.service;
+
+import java.util.List;
+import java.util.Map;
+
+import com.platform.entity.TradeType;
+
+import dbengine.util.Page;
+
+public interface ITradeTypeService {
+
+	/**
+	 * 添加或删除行业
+	 * @param sourceId
+	 * @param closeConn
+	 * @param tradeType
+	 * @return
+	 */
+	public boolean saveOrUpTradeType(String sourceId, boolean closeConn, TradeType tradeType);
+	/**
+	 * 删除行业
+	 * @param sourceId
+	 * @param closeConn
+	 * @param id
+	 * @return
+	 */
+	public boolean delTradeTypeById(String sourceId, boolean closeConn, String id);
+	/**
+	 * 删除行业
+	 * @param sourceId
+	 * @param closeConn
+	 * @param uuid
+	 * @return
+	 */
+	public boolean delTradeTypeByUUID(String sourceId, boolean closeConn, String uuid);
+	/**
+	 * 获取行业对象
+	 * @param sourceId
+	 * @param closeConn
+	 * @param id
+	 * @return 行业对象
+	 */
+	public TradeType findTradeTypeById(String sourceId, boolean closeConn, String id);
+	/**
+	 * 获取行业对象
+	 * @param sourceId
+	 * @param closeConn
+	 * @param uuid
+	 * @return 行业对象
+	 */
+	public TradeType findTradeTypeByUUID(String sourceId, boolean closeConn, String uuid);
+	/**
+	 * 获取所有行业集信息
+	 * @param sourceId
+	 * @param closeConn
+	 * @param findMap
+	 * @return
+	 */
+	public List<TradeType> findTradeTypeList(String sourceId, boolean closeConn, Map<String, String> findMap);
+	/**
+	 * 获取所有行业集信息(分页)
+	 * @param sourceId
+	 * @param closeConn
+	 * @param page
+	 * @param findMap
+	 * @return 行业集
+	 */
+	@SuppressWarnings("rawtypes")
+	public List<Map> findTradeTypeListMap(String sourceId, boolean closeConn, Page page, Map<String, String> findMap);
+	/**
+	 * 获取子级行业类型编码
+	 * @param sourceId
+	 * @param closeConn
+	 * @param tradeParentCode
+	 * @return 编码
+	 */
+	public String getNextTradeCode(String sourceId, boolean closeConn, String tradeParentCode);
+	/**
+	 * 获取所有父级行业类型编码
+	 * @param sourceId
+	 * @param closeConn
+	 * @return 编码集
+	 */
+	public List<String> getParentTradeCode(String sourceId, boolean closeConn);
+	
+	public List<Map<String, String>> findTypeNameToAutocompleter(String sourceId, boolean closeConn, String typeName) ;
+}

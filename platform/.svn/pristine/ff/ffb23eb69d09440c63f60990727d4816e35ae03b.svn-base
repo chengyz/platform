@@ -1,0 +1,19 @@
+package com.sctgz.HkdApp.action;
+
+import spark.annotation.Auto;
+import spark.servlet.ISparkApplication;
+
+import com.sctgz.HkdApp.manage.TimedTaskMng;
+/**
+ * 订单结算任务的action
+ * @author chengyz
+ *
+ */
+public class TimedTaskAction implements ISparkApplication{
+	@Auto(name=TimedTaskMng.class)
+	private TimedTaskMng timedTaskMng;
+	@Override
+	public void run() {
+		timedTaskMng.task();//未确认订单的自动结算功能
+	}
+}

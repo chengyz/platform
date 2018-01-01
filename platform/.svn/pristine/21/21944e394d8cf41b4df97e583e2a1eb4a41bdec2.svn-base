@@ -1,0 +1,106 @@
+package com.sctgz.HkdApp.service;
+
+import java.util.List;
+import java.util.Map;
+
+import com.sctgz.HkdApp.entity.OrderInfo;
+
+import dbengine.util.Page;
+
+/**
+ * 帮我买、帮我送、帮我取 订单的service接口
+ * @author chengyz
+ *
+ */
+public interface OrderInfoService {
+	/**
+	 * 通过订单UUID查询订单
+	 * @param sourceId
+	 * @param closeConn
+	 * @param orderUUID
+	 * @return
+	 */
+	public OrderInfo findOrder(String sourceId,boolean closeConn,String orderUUID);
+	/**
+	 * 删除单个订单
+	 * @param sourceId
+	 * @param closeConn
+	 * @param orderUUID
+	 * @return
+	 */
+	public boolean deleteOrder(String sourceId,boolean closeConn,String orderUUID);
+	/**
+	 * 查询订单列表
+	 * @param sourceId
+	 * @param closeConn
+	 * @param findMap
+	 * @return
+	 */
+	public List<OrderInfo> findOrderList(String sourceId,boolean closeConn,Page page,Map<String,String> findMap);
+	/**
+	 * 保存或修改订单
+	 * @param sourceId
+	 * @param closeConn
+	 * @param buyOrder
+	 * @return
+	 */
+	public boolean saveOrUpOrder(String sourceId,boolean closeConn,OrderInfo orderInfo);
+	/**
+	 * 修改订单的状态
+	 * @param sourceId
+	 * @param closeConn
+	 * @param order
+	 * @return
+	 */
+	public boolean updateOrderStatus(String sourceId, boolean closeConn,String status, String orderUUID);
+	/**
+	 * 通过交易时创建的订单号查询
+	 * @param sourceId
+	 * @param closeConn
+	 * @param outsideOrderNo
+	 * @return
+	 */
+	public OrderInfo findByOutOrderNo(String sourceId,boolean closeConn,String outsideOrderNo);
+	/**
+	 * 查询我的接单订单列表
+	 * @param sourceId
+	 * @param closeConn
+	 * @param page
+	 * @param findMap
+	 * @return
+	 */
+	public List<OrderInfo> findGetOrderList(String sourceId, boolean closeConn, Page page, Map<String, String> findMap);
+	/**
+	 * 轮训查询自动结算的订单列表
+	 * @param sourceId
+	 * @param closeConn
+	 * @param findMap
+	 * @return
+	 */
+	public List<OrderInfo> findOrdersList(String sourceId,boolean closeConn);
+	
+	/**
+	 * 轮训查询未支付的订单列表
+	 * @param sourceId
+	 * @param closeConn
+	 * @param findMap
+	 * @return
+	 */
+	public List<OrderInfo> findOrdersLists(String sourceId,boolean closeConn);
+	/**
+	 * 轮训查询未被抢的订单列表
+	 * @param sourceId
+	 * @param closeConn
+	 * @return
+	 */
+	public List<OrderInfo> findOrderNoGetLists(String sourceId, boolean closeConn);
+	/**
+	 * 通过订单UUID查询收货确认码
+	 * @param sourceId
+	 * @param closeConn
+	 * @param orderUUID
+	 * @return
+	 */
+	public String findOrderPasscode(String sourceId, boolean closeConn, String vipUUID, String orderUUID);
+	
+}

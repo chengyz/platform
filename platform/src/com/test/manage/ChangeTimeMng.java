@@ -1,0 +1,124 @@
+package com.test.manage;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import spark.annotation.Auto;
+
+import com.test.entity.ChangeTime;
+import com.test.service.ChangeTimeService;
+import com.test.service.impl.ChangeTimeServiceImpl;
+import com.util.CacheUtil;
+import com.util.JsonUtil;
+import com.util.ReqToEntityUtil;
+
+import dbengine.util.Page;
+
+/**
+ * 
+ * 支付和更新订单各种时间的管理
+ * @author chengyz
+ */
+public class ChangeTimeMng {
+	@Auto(name = ChangeTimeServiceImpl.class)
+	private ChangeTimeService changeTimeService;
+
+	/**
+	 * 查询时间列表
+	 * @param sourceId
+	 * @param closeConn
+	 * @param page
+	 * @return
+	 */
+	public String findChangeTimeList(String sourceId, boolean closeConn, HttpServletRequest request, HttpServletResponse response) {
+		Page page = (Page) ReqToEntityUtil.reqToEntity(request, Page.class);
+		List<ChangeTime> list = changeTimeService.findTimeList(sourceId, closeConn, page);
+		if (list == null) {
+			return "[]";
+		}
+		if (page == null) {
+			return JsonUtil.ObjToJson(list);
+		} else {
+			return JsonUtil.ObjToJson(page);
+		}
+	}
+	/**
+	 * 添加或修改各种时间
+	 * @param sourceId
+	 * @param closeConn
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	public String saveOrUpChangeTime(String sourceId, boolean closeConn, HttpServletRequest request, HttpServletResponse response){
+		ChangeTime time = (ChangeTime)ReqToEntityUtil.reqToEntity(request, ChangeTime.class);
+		Map<String,String> map = new HashMap<String,String>();
+		if(time != null){
+			if(changeTimeService.saveOrUpChangeTime(sourceId, closeConn, time)){
+				map.put("status", "1");
+				map.put("msg", "添加或修改数据成功");
+				return JsonUtil.ObjToJson(map);
+			}else{
+				map.put("status", "-1");
+				map.put("msg", "添加或修改数据失败");
+				return JsonUtil.ObjToJson(map);
+			}
+		}else{
+			map.put("status", "-2");
+			map.put("msg", "未获取到任何信息");
+			return JsonUtil.ObjToJson(map);
+		}
+	}
+	/**
+	 * 删除时间记录
+	 * @param sourceId
+	 * @param closeConn
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	public String deleteChangeTime(String sourceId,boolean closeConn,HttpServletRequest request,HttpServletResponse response){
+		String timeUUID = request.getParameter("timeUUID");
+		Map<String,String> map = new HashMap<String,String>();
+		if(timeUUID != null && !"".equals(timeUUID)){
+			if(changeTimeService.deleteChangeTime(sourceId, closeConn, timeUUID)){
+				map.put("status", "2");
+				map.put("msg", "成功");
+				return JsonUtil.ObjToJson(map);
+			}else{
+				map.put("status", "1");
+				map.put("msg", "失败");
+				return JsonUtil.ObjToJson(map);
+			}
+		}else{
+			map.put("status", "-1");
+			map.put("msg", "未获取到信息");
+			return JsonUtil.ObjToJson(map);
+		}
+	}
+	/**
+	 * 查询时间记录
+	 * @param sourceId
+	 * @param closeConn
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	public String findChangeTime(String sourceId,boolean closeConn,HttpServletRequest request,HttpServletResponse response){
+		String timeUUID = request.getParameter("timeUUID");
+		if(timeUUID != null && !"".equals(timeUUID)){
+			ChangeTime time = changeTimeService.findChangeTime(sourceId, closeConn, timeUUID);
+			if(time == null){
+				return "[]";
+			}else{
+				return JsonUtil.ObjToJson(time);
+			}
+		}else{
+			return "[]";
+		}
+	}
+}

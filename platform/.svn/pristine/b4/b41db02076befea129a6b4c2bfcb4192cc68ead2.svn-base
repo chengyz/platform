@@ -1,0 +1,141 @@
+package com.sctgz.HkdApp.manage;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import com.mysql.jdbc.StringUtils;
+import com.sctgz.util.CacheUtil;
+import com.sctgz.util.JsonUtil;
+
+public class MessageMng {
+	/**
+	 * 设置未处理消息进入缓存
+	 * 
+	 * @param sourceId
+	 * @param closeConn
+	 * @param page
+	 * @return
+	 */
+	public boolean addMessage(String sourceId, boolean closeConn, Map msgMap) {
+		//msgMap  msgUUID,msgStatus(消息状态:0待处理，1已处理),msgType(消息类型：1一般消息，2广播消息，3点对点消息)，msgModule(消息模块：01抢单消息，02充值成功消息)
+		//msgContent(消息内容),msgSendUUID(消息发送方uuid),msgRecUUID(消息接收方uuid)
+		if(msgMap==null){
+			return false;
+		}
+		if(msgMap.get("msgUUID")==null){
+			return false;
+		}
+		msgMap.put("msgStatus", "0");//状态为待处理
+		// 查出消息缓存数据列表
+		List<Map> msgList = (List<Map>)CacheUtil.getInstance().getBaseCache().get("msgCache");
+		if (msgList == null) {
+			//创建空列表
+			msgList = new ArrayList<Map>();
+		}
+		msgList.add(msgMap);
+		CacheUtil.getInstance().getBaseCache().put("msgCache", msgList);
+		return true;
+	}
+	/**
+	 * 获取一条未处理消息
+	 * 
+	 * @param sourceId
+	 * @param closeConn
+	 * @param page
+	 * @return
+	 */
+	public String getMessage(String sourceId, boolean closeConn, HttpServletRequest request, HttpServletResponse response) {
+		Map rmap = new HashMap();
+		String vipUUID = request.getParameter("vipUUID");
+		if(StringUtils.isNullOrEmpty(vipUUID)){
+			rmap.put("status", "-1");
+			rmap.put("msg", "参数错误");
+			return JsonUtil.ObjToJson(rmap);
+		}
+		
+		// 查出消息缓存数据列表
+		List<Map> msgList = (List<Map>)CacheUtil.getInstance().getBaseCache().get("msgCache");
+		Map msgMap = null;
+		if(msgList != null && msgList.size() > 0){
+			for(Map map:msgList){
+				//获取用户未读消息
+				if(StringUtils.isNullOrEmpty((String)map.get(vipUUID)) || "0".equals(map.get(vipUUID))){
+					//标记为已读
+					map.put(vipUUID, "1");
+					//点对点消息
+					if("3".equals((String)map.get("msgType"))){
+						//只向接受者发消息
+//						if(vipUUID.equals((map.get("msgRecUUID").toString()))){
+							msgMap = map;
+							break;
+//						}
+					}else{//广播消息
+						msgMap = map;
+						break;
+					}
+				}
+				
+			}
+		}
+		if(msgMap == null){
+			rmap.put("status", "-2");
+			rmap.put("msg", "无消息");
+		}else{
+			rmap.put("status", "1");
+			rmap.put("msg", "消息获取成功");
+			rmap.put("info", msgMap);
+		}
+		return JsonUtil.ObjToJson(rmap);
+	}
+	
+	/**
+	 * 删除一条消息
+	 * 
+	 * @param sourceId
+	 * @param closeConn
+	 * @param page
+	 * @return
+	 */
+	public String delMessage(String sourceId, boolean closeConn, HttpServletRequest request, HttpServletResponse response) {
+		//msgMap  msgUUID,msgStatus(消息状态:0待处理，1已处理),msgType(消息类型：1一般消息，2广播消息，3点对点消息)，msgModule(消息模块：01抢单消息，02充值成功消息)
+		//msgContent(消息内容),msgSendUUID(消息发送方uuid),msgRecUUID(消息接收方uuid)
+		String msgUUID = request.getParameter("msgUUID");
+		Map rmap = new HashMap();
+		if(msgUUID==null || "null".equals(msgUUID) || "".equals(msgUUID)){
+			rmap.put("status", "0");
+			rmap.put("msg", "参数错误");
+			return JsonUtil.ObjToJson(rmap);
+		}
+		// 查出消息缓存数据列表
+		List<Map> msgList = (List<Map>)CacheUtil.getInstance().getBaseCache().get("msgCache");
+		if(msgList==null){
+			rmap.put("status", "-1");
+			rmap.put("msg", "无缓存");
+			return JsonUtil.ObjToJson(rmap);
+		}
+		Map nMap = null;
+		boolean flag=false;
+		for(Map map:msgList){
+			//取一条未处理的消息
+			if(msgUUID.equals(map.get("msgUUID").toString())){
+				msgList.remove(map);
+				flag=true;
+				break;
+			}
+		}
+		if(true){
+			rmap.put("status", "1");
+			rmap.put("msg", "移除消息成功！");
+			return JsonUtil.ObjToJson(rmap);
+		}else{
+			rmap.put("status", "-2");
+			rmap.put("msg", "无删除的的消息！");
+			return JsonUtil.ObjToJson(rmap);
+		}
+	}
+}
